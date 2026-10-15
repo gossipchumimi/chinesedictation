@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>漢字筆順守衛戰</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HanziWriter CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ink-slash-game';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+        let auth, db, currentUser = null;
+
+        if (firebaseConfig) {
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            async function initAuth() {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        const userCred = await signInWithCustomToken(auth, __initial_auth_token);
+                        currentUser = userCred.user;
+                    } else {
+                        const userCred = await signInAnonymously(auth);
+                        currentUser = userCred.user;
+                    }
+                    if (window.loadCloudData) window.loadCloudData();
+                } catch (e) {
+                    console.error("Firebase auth error:", e);
+                }
+            }
+            initAuth();
+        }
+
+        window.saveCloudDataToSlot = async function(slotNumber, customTitle) {
+            const currentWords = document.getElementById('parentCustomInput')?.value.trim() || "";
+            const slotName = customTitle || `存檔槽 ${slotNumber}`;
+
+            if (!currentWords) {
+                if (window.showToast) window.showToast("⚠️ 請先在框內輸入要儲存的字詞！");
+                return;
+            }
+
+            let localSlots = JSON.parse(localStorage.getItem('ink_slash_save_slots') || '{}');
+            localSlots[slotNumber] = { title: slotName, words: currentWords, date: new Date().toLocaleDateString() };
+            localStorage.setItem('ink_slash_save_slots', JSON.stringify(localSlots));
+            localStorage.setItem('ink_slash_last_words', currentWords);
+
+            if (window.renderSaveSlotsList) window.renderSaveSlotsList();
+            if (window.showToast) window.showToast(`💾 已成功儲存至「${slotName}」！`);
+
+            if (db && currentUser) {
+                try {
+                    const userDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'saveData', 'slots');
+                    await setDoc(userDocRef, { slots: localSlots, updatedAt: Date.now() }, { merge: true });
+                } catch (err) {
+                    console.error("Cloud Slot Save error:", err);
+                }
+            }
+        };
+
+        window.loadCloudData = async function() {
+            const localSlots = JSON.parse(localStorage.getItem('ink_slash_save_slots') || '{}');
+            const lastWords = localStorage.getItem('ink_slash_last_words');
+            if (lastWords && document.getElementById('parentCustomInput')) {
+                document.getElementById('parentCustomInput').value = lastWords;
+            }
+            if (window.renderSaveSlotsList) window.renderSaveSlotsList();
+
+            if (!db || !currentUser) return;
+            try {
+                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'saveData', 'slots');
+                const docSnap = await getDoc(userDocRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.slots) {
+                        localStorage.setItem('ink_slash_save_slots', JSON.stringify(data.slots));
+                        if (window.renderSaveSlotsList) window.renderSaveSlotsList();
+                    }
+                }
+            } catch (err) {
+                console.error("Cloud Load error:", err);
+            }
+        };
+    </script>
+
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #080c14;
+            color: #f1f5f9;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        .font-calligraphy { 
+            font-family: 'Noto Serif TC', serif; 
+            font-weight: 900;
+        }
+
+        .glow-gold { text-shadow: 0 0 14px rgba(245, 158, 11, 0.95), 0 0 35px rgba(217, 119, 6, 0.85); }
+
+        .ink-card {
+            border: 2px solid rgba(245, 158, 11, 0.5);
+            background: rgba(10, 15, 28, 0.96);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.95);
+        }
+
+        @keyframes slashAttack {
+            0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+            30% { transform: scale(1.18) translate(40px, -15px) rotate(8deg); filter: brightness(1.6) drop-shadow(0 0 25px #f59e0b); }
+            60% { transform: scale(1.08) translate(15px, 0px) rotate(-3deg); filter: brightness(1.3); }
+            100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+        }
+
+        @keyframes hitEnemy {
+            0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+            20% { transform: scale(0.9) translate(-30px, 10px) rotate(-15deg); filter: brightness(3) sepia(1) hue-rotate(-50deg); }
+            50% { transform: scale(1.15) translate(40px, -40px) rotate(25deg); opacity: 0.8; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
+        }
+
+        .slash-anim { animation: slashAttack 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+        .hit-anim { animation: hitEnemy 0.65s cubic-bezier(0.25, 1, 0.5, 1); }
+
+        .character-frame {
+            position: relative;
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
+            border: 3px solid #f59e0b;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(245, 158, 11, 0.2);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        #dictationCanvas, #hanziWriterTarget {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="relative flex items-center justify-center">
+
+    <div id="flashOverlay" class="absolute inset-0 z-10 pointer-events-none"></div>
+    <div id="toastMessage" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-950/95 border-2 border-amber-400 text-amber-200 px-5 py-2.5 rounded-2xl shadow-2xl font-bold font-calligraphy opacity-0 transition-opacity pointer-events-none text-base"></div>
+    <div id="bgContainer" class="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat" style="background-image: url('https://live.staticflickr.com/65535/55590661099_522b14d801_z.jpg'); filter: brightness(0.65) contrast(1.1);"></div>
+
+    <!-- Pause Button in Top-Right Corner -->
+    <button id="pauseGameBtn" class="hidden absolute top-4 right-4 z-30 bg-slate-900/90 hover:bg-slate-800 border-2 border-amber-500/80 text-amber-300 w-12 h-12 rounded-2xl shadow-2xl flex items-center justify-center text-xl transition active:scale-95 pointer-events-auto">
+        <i class="fa-solid fa-pause"></i>
+    </button>
+
+    <div id="gameScene" class="absolute inset-0 z-10 flex items-center justify-between px-2 md:px-10 py-16 pointer-events-none">
+        
+        <!-- Hero Character Frame -->
+        <div id="heroCard" class="w-1/4 max-w-[240px] h-[62%] flex flex-col items-center justify-between p-3 character-frame transition-all duration-300 pointer-events-auto group">
+            <label for="heroPhotoInput" class="cursor-pointer bg-amber-950/90 hover:bg-amber-800 text-amber-300 border border-amber-500/60 px-2.5 py-1 rounded-xl text-base font-bold shadow-lg transition flex items-center space-x-1 z-10">
+                <i class="fa-solid fa-camera text-base"></i>
+                <span id="uploadPhotoLabel">上傳主角相片</span>
+            </label>
+            <input type="file" id="heroPhotoInput" accept="image/*" class="hidden">
+
+            <div id="heroImgWrapper" class="relative w-full h-[70%] flex items-center justify-center overflow-hidden my-auto rounded-xl border-2 border-amber-400/80 bg-slate-900/60 shadow-inner">
+                <img id="heroImgEl" src="https://live.staticflickr.com/65535/55590224936_9b150393c9_z.jpg" alt="鎮守大將" class="w-full h-full object-cover rounded-lg transition-all">
+            </div>
+
+            <div class="w-full flex flex-col items-center">
+                <div class="bg-gradient-to-r from-red-950 via-amber-900 to-red-950 border border-amber-400 px-3 py-1.5 rounded-full text-center shadow-lg w-full truncate">
+                    <span id="heroNameTag" class="text-amber-200 font-calligraphy font-black text-lg tracking-wider">關雲長</span>
+                </div>
+                <button id="resetHeroPhotoBtn" class="hidden text-xs text-gray-400 hover:text-amber-300 mt-1 underline">重置預設角色</button>
+            </div>
+        </div>
+
+        <!-- Writing Grid Area -->
+        <div id="writingAreaContainer" class="pointer-events-auto flex flex-col items-center z-20">
+            <div id="charHeaderInfo" class="mb-3 bg-slate-950/90 backdrop-blur-md border-2 border-amber-500 px-6 py-3 rounded-2xl flex items-center space-x-5 shadow-2xl">
+                <div class="relative w-18 h-18 bg-slate-900/90 rounded-xl border-2 border-red-500/80 flex items-center justify-center overflow-hidden">
+                    <span id="targetCharTitle" class="text-5xl font-calligraphy text-amber-300 glow-gold z-10">學</span>
+                </div>
+                <div class="h-14 w-px bg-slate-800"></div>
+                <div>
+                    <div class="flex items-center space-x-3 flex-wrap gap-y-1">
+                        <span id="wordIndexTag" class="text-base bg-red-950/90 text-red-300 px-3.5 py-1 rounded border border-red-500/50 font-bold font-calligraphy">目標 1 / 6</span>
+                        <span id="strokeProgressText" class="text-lg text-emerald-400 font-bold">筆劃: 0 / 16</span>
+                        <div class="flex items-center space-x-2 bg-amber-950/90 border border-amber-500/70 px-3.5 py-1.5 rounded-lg shadow-inner">
+                            <span class="text-base text-amber-400 font-bold">粵音:</span>
+                            <span id="jyutpingText" class="text-lg text-amber-200 font-bold font-mono">hok6</span>
+                            <button id="speakBtn" class="text-amber-300 hover:text-amber-100 active:scale-90 transition p-1">
+                                <i class="fa-solid fa-volume-high text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <span id="instructionSubtext" class="text-base text-gray-200 mt-2 block font-bold">寫出正確筆順，下令大將揮刀橫掃！</span>
+                </div>
+            </div>
+
+            <!-- Canvas Frame with Action Toolbar Below -->
+            <div id="canvasFrame" class="relative rounded-3xl p-5 bg-slate-950/60 border-4 border-amber-500 shadow-2xl backdrop-blur-md flex flex-col items-center">
+                <div class="relative w-full h-full flex items-center justify-center">
+                    <div id="gridOverlay" class="absolute inset-0 rounded-2xl border-2 border-red-500/50 pointer-events-none grid grid-cols-3 grid-rows-3 z-10">
+                        <div class="border-r-2 border-b-2 border-red-500/50"></div>
+                        <div class="border-r-2 border-b-2 border-red-500/50"></div>
+                        <div class="border-b-2 border-red-500/50"></div>
+                        <div class="border-r-2 border-b-2 border-red-500/50"></div>
+                        <div class="border-r-2 border-b-2 border-red-500/50"></div>
+                        <div class="border-b-2 border-red-500/50"></div>
+                        <div class="border-r-2 border-red-500/50"></div>
+                        <div class="border-r-2 border-red-500/50"></div>
+                        <div></div>
+                    </div>
+                    <!-- HanziWriter Canvas -->
+                    <div id="hanziWriterTarget" class="bg-transparent rounded-2xl overflow-hidden cursor-crosshair"></div>
+                    <!-- Raw Canvas for Dictation Mode -->
+                    <canvas id="dictationCanvas" class="absolute inset-0 rounded-2xl z-20 cursor-crosshair hidden"></canvas>
+                </div>
+
+                <!-- Action Buttons placed cleanly below canvas -->
+                <div class="w-full flex items-center justify-center gap-3.5 mt-4 z-30">
+                    <button id="animateBtn" class="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 px-5 py-3 rounded-xl border border-emerald-500/50 text-base font-bold transition shadow-lg flex items-center space-x-2">
+                        <i class="fa-solid fa-play"></i>
+                        <span>動畫示範</span>
+                    </button>
+                    <button id="eraserBtn" class="hidden bg-slate-800 hover:bg-slate-700 text-amber-300 px-5 py-3 rounded-xl border border-amber-500/50 text-base font-bold transition shadow-lg flex items-center space-x-2">
+                        <i class="fa-solid fa-eraser"></i>
+                        <span>擦膠/重寫</span>
+                    </button>
+                    <button id="submitQuizBtn" class="hidden bg-amber-500 hover:bg-amber-400 text-black px-6 py-3 rounded-xl border border-amber-300 text-base font-black transition shadow-lg font-calligraphy flex items-center space-x-2">
+                        <span>下一字 ➡️</span>
+                    </button>
+                    <button id="guideToggleBtn" class="bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 px-5 py-3 rounded-xl border border-cyan-500/50 text-base font-bold transition shadow-lg flex items-center space-x-2">
+                        <i class="fa-solid fa-shuffle"></i>
+                        <span id="guideToggleText">描紅/默寫切換</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enemy Character Frame -->
+        <div id="enemyCard" class="w-1/4 max-w-[240px] h-[62%] flex flex-col items-center justify-between p-3 character-frame transition-all duration-300 pointer-events-auto group">
+            <label for="enemyPhotoInput" class="cursor-pointer bg-red-950/90 hover:bg-red-900 text-red-300 border border-red-500/60 px-2.5 py-1 rounded-xl text-base font-bold shadow-lg transition flex items-center space-x-1 z-10">
+                <i class="fa-solid fa-camera text-base"></i>
+                <span id="uploadEnemyPhotoLabel">上傳對手相片</span>
+            </label>
+            <input type="file" id="enemyPhotoInput" accept="image/*" class="hidden">
+
+            <div id="enemyImgWrapper" class="relative w-full h-[65%] flex items-center justify-center overflow-hidden my-auto rounded-xl border-2 border-red-500/80 bg-slate-900/80 shadow-inner">
+                <img id="enemyImgEl" src="" alt="擊退對象" class="w-full h-full object-cover rounded-lg transition-all hidden">
+                <i id="enemyIcon" class="fa-solid fa-skull-crossbones text-7xl text-amber-400 drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]"></i>
+            </div>
+
+            <div class="w-full text-center flex flex-col items-center">
+                <div class="w-full bg-slate-900 h-3.5 rounded-full overflow-hidden border border-red-800 mb-2">
+                    <div id="enemyHpBar" class="h-full bg-red-600 w-full transition-all duration-300"></div>
+                </div>
+                <div class="bg-amber-950/90 border border-amber-500 px-3 py-1.5 rounded-full text-center shadow-lg w-full truncate">
+                    <span id="enemyNameTag" class="text-red-300 font-calligraphy font-bold text-lg">水鄉水賊</span>
+                </div>
+                <span id="enemyCharBadge" class="text-3xl font-black text-amber-200 font-calligraphy glow-gold mt-1">學</span>
+                <button id="resetEnemyPhotoBtn" class="hidden text-xs text-gray-400 hover:text-red-300 mt-1 underline">重置預設對手</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="startModal" class="absolute inset-0 z-40 flex items-center justify-end pr-8 md:pr-16 py-4 bg-cover bg-center no-repeat overflow-y-auto" style="background-image: url('https://live.staticflickr.com/65535/55590440216_d02384f618_z.jpg'); background-size: 100% 100%;">
+        <div class="ink-card p-6 md:p-8 rounded-3xl max-w-xl w-full text-center relative overflow-hidden my-auto max-h-[96vh] overflow-y-auto">
+            <p class="text-lg text-amber-300 mb-4 font-bold tracking-widest font-calligraphy">請選擇學習模式與設定默寫詞庫</p>
+
+            <div class="bg-slate-900/90 p-4 rounded-2xl text-left border-2 border-amber-500/50 mb-4 space-y-3 shadow-inner">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2 flex-wrap gap-2">
+                    <label class="text-base font-bold text-amber-300 flex items-center font-calligraphy">
+                        <span class="text-xl mr-1.5">👨‍👩‍👧‍👦</span> 學生自訂默寫/考核字詞:
+                    </label>
+                    <button id="presetBtn" type="button" class="text-xs text-cyan-300 bg-cyan-950/80 px-3.5 py-1.5 rounded border border-cyan-500/40 hover:bg-cyan-900 font-bold">預設範例</button>
+                </div>
+
+                <!-- Grade Selector Grid with Comprehensive Vocab -->
+                <div class="bg-slate-950 px-4 py-3 rounded-xl border border-slate-700">
+                    <div class="flex items-center justify-between mb-2.5 flex-wrap gap-1">
+                        <span class="text-sm text-amber-400 font-bold">🎓 香港小學年級海量詞庫 (自動隨機抽題):</span>
+                        <span class="text-xs text-gray-300 font-bold">💡 抽20字</span>
+                    </div>
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-2" id="gradeSelectorGrid">
+                        <button type="button" data-grade="P1" class="grade-btn px-2.5 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-300 border-slate-700 hover:border-amber-400 hover:text-amber-300">小一 (P1)</button>
+                        <button type="button" data-grade="P2" class="grade-btn px-2.5 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-300 border-slate-700 hover:border-amber-400 hover:text-amber-300">小二 (P2)</button>
+                        <button type="button" data-grade="P3" class="grade-btn px-2.5 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-300 border-slate-700 hover:border-amber-400 hover:text-amber-300">小三 (P3)</button>
+                        <button type="button" data-grade="P4" class="grade-btn px-2.5 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-300 border-slate-700 hover:border-amber-400 hover:text-amber-300">小四 (P4)</button>
+                        <button type="button" data-grade="P5" class="grade-btn px-2.5 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-300 border-slate-700 hover:border-amber-400 hover:text-amber-300">小五 (P5)</button>
+                        <button type="button" data-grade="P6" class="grade-btn px-2.5 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-300 border-slate-700 hover:border-amber-400 hover:text-amber-300">小六 (P6)</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-amber-400 font-bold whitespace-nowrap">將軍名號:</span>
+                        <input type="text" id="playerNameInput" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-amber-200 focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold" value="關雲長">
+                    </div>
+                    <div class="flex items-center justify-between bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-700">
+                        <span class="text-sm text-amber-400 font-bold">主角造型:</span>
+                        <label for="modalHeroPhotoInput" class="cursor-pointer text-xs text-amber-300 bg-amber-900/80 hover:bg-amber-800 px-3 py-1.5 rounded border border-amber-500/50 font-bold">選擇相片</label>
+                        <input type="file" id="modalHeroPhotoInput" accept="image/*" class="hidden">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between bg-slate-950 px-3.5 py-3 rounded-xl border border-slate-700">
+                    <span class="text-sm text-amber-400 font-bold">敵人造型:</span>
+                    <label for="modalEnemyPhotoInput" class="cursor-pointer text-xs text-red-300 bg-red-900/80 hover:bg-red-800 px-3.5 py-1.5 rounded border border-red-500/50 font-bold">選擇相片</label>
+                    <input type="file" id="modalEnemyPhotoInput" accept="image/*" class="hidden">
+                </div>
+
+                <div class="flex items-center justify-between bg-slate-950 px-3.5 py-3 rounded-xl border border-slate-700">
+                    <span class="text-sm text-amber-400 font-bold">學習模式:</span>
+                    <div class="flex space-x-2">
+                        <button type="button" id="startModeGuidedBtn" class="px-4 py-2 rounded-lg text-xs font-bold border transition bg-amber-500 text-black border-amber-400 shadow">描紅練習</button>
+                        <button type="button" id="startModeQuizBtn" class="px-4 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-400 border-slate-700 hover:text-amber-200">默寫考核 (一筆過)</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between bg-slate-950 px-3.5 py-3 rounded-xl border border-slate-700">
+                    <span class="text-sm text-amber-400 font-bold">出題次序:</span>
+                    <div class="flex space-x-2">
+                        <button type="button" id="orderSequentialBtn" class="px-4 py-2 rounded-lg text-xs font-bold border transition bg-amber-500 text-black border-amber-400 shadow">順序出題</button>
+                        <button type="button" id="orderRandomBtn" class="px-4 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-400 border-slate-700 hover:text-amber-200">隨機洗牌</button>
+                    </div>
+                </div>
+
+                <!-- Textarea and RPG Save/Load Buttons -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <span class="text-sm text-amber-400 font-bold">✏️ 輸入字詞 (用空格分隔):</span>
+                        <div class="flex space-x-2">
+                            <button id="openSaveModalBtn" type="button" class="text-xs text-emerald-200 bg-emerald-900 hover:bg-emerald-800 border border-emerald-500/60 px-3.5 py-1.5 rounded-lg font-bold shadow transition flex items-center space-x-1">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span>💾 儲存 Save</span>
+                            </button>
+                            <button id="openLoadModalBtn" type="button" class="text-xs text-amber-200 bg-amber-900 hover:bg-amber-800 border border-amber-500/60 px-3.5 py-1.5 rounded-lg font-bold shadow transition flex items-center space-x-1">
+                                <i class="fa-solid fa-folder-open"></i>
+                                <span>📂 載入 Load</span>
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="parentCustomInput" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold tracking-wider" placeholder="請輸入詞庫，例如: 學習 努力 香港"></textarea>
+                </div>
+            </div>
+
+            <!-- Start Game Button -->
+            <button id="startGameBtn" type="button" class="w-full py-4 rounded-2xl bg-gradient-to-r from-red-600 via-amber-500 to-red-700 text-black font-black text-xl hover:brightness-110 active:scale-95 transition shadow-2xl font-calligraphy flex items-center justify-center space-x-2 cursor-pointer">
+                <span>⚔️ 率領武將 鎮守水鄉 (開始遊戲)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Pause Modal with Mode-Aware Options -->
+    <div id="pauseModal" class="hidden absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div class="ink-card p-6 rounded-3xl max-w-sm w-full text-center relative overflow-hidden flex flex-col gap-3">
+            <h3 class="text-2xl font-calligraphy text-amber-400 glow-gold mb-1">⏸️ 戰局暫停</h3>
+            <p class="text-xs text-gray-400 mb-2 font-bold">PAUSE MENU</p>
+
+            <button id="pauseResumeBtn" class="py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base font-calligraphy shadow transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-play"></i>
+                <span>繼續 (我要戰鬥)</span>
+            </button>
+
+            <button id="pauseHomeBtn" class="py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-200 font-bold text-base font-calligraphy border border-amber-500/40 shadow transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-house"></i>
+                <span>回主頁 (退守門後)</span>
+            </button>
+
+            <button id="pauseSurrenderBtn" class="hidden py-3 rounded-xl bg-red-950 hover:bg-red-900 text-red-300 font-bold text-base font-calligraphy border border-red-500/60 shadow transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-flag"></i>
+                <span>結束去成績page (我投降了)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- RPG Save Modal -->
+    <div id="saveModal" class="hidden absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div class="ink-card p-6 rounded-3xl max-w-md w-full text-center relative overflow-hidden">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
+                <h3 class="text-lg font-bold text-emerald-400">💾 RPG 存檔管理 (Save Game)</h3>
+                <button id="closeSaveModalBtn" class="text-gray-400 hover:text-white px-2 py-1 font-bold text-sm">✖ 關閉</button>
+            </div>
+            <div class="space-y-3">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-amber-400 font-bold">存檔名稱:</span>
+                    <input type="text" id="saveSlotNameInput" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-amber-200 focus:outline-none font-bold" placeholder="例如：第一單元默書">
+                </div>
+                <div class="grid grid-cols-3 gap-2 pt-2">
+                    <button type="button" onclick="saveToSlot(1)" class="py-2.5 bg-slate-900 hover:bg-slate-800 border border-emerald-500/50 rounded-xl text-emerald-300 font-bold text-xs">存檔槽 1</button>
+                    <button type="button" onclick="saveToSlot(2)" class="py-2.5 bg-slate-900 hover:bg-slate-800 border border-emerald-500/50 rounded-xl text-emerald-300 font-bold text-xs">存檔槽 2</button>
+                    <button type="button" onclick="saveToSlot(3)" class="py-2.5 bg-slate-900 hover:bg-slate-800 border border-emerald-500/50 rounded-xl text-emerald-300 font-bold text-xs">存檔槽 3</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RPG Load Modal -->
+    <div id="loadModal" class="hidden absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div class="ink-card p-6 rounded-3xl max-w-md w-full text-center relative overflow-hidden">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
+                <h3 class="text-lg font-bold text-amber-400">📂 RPG 讀檔管理 (Load Game)</h3>
+                <button id="closeLoadModalBtn" class="text-gray-400 hover:text-white px-2 py-1 font-bold text-sm">✖ 關閉 / 返回主頁</button>
+            </div>
+            <div id="saveSlotsListContainer" class="flex flex-col gap-2 max-h-60 overflow-y-auto p-2 bg-slate-950/80 rounded-2xl border border-slate-800">
+                <!-- Dynamically populated save slots -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Dictation Review Modal -->
+    <div id="dictationReviewModal" class="hidden absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+        <div class="ink-card p-6 md:p-8 rounded-3xl max-w-3xl w-full text-center relative overflow-hidden flex flex-col max-h-[92vh]">
+            <h2 class="text-2xl md:text-3xl font-calligraphy text-amber-400 glow-gold mb-1">✍️ 默寫總結與校對版面</h2>
+            <p class="text-xs text-gray-400 mb-4 font-bold tracking-widest">DICTATION REVIEW & ERROR CORRECTION</p>
+
+            <div id="reviewGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 overflow-y-auto my-3 p-2 bg-slate-950/60 rounded-2xl border border-slate-800 flex-1">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 mt-3 pt-2 border-t border-slate-800">
+                <button id="reviewRetryAllBtn" class="py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm transition shadow-lg">全部重新默寫</button>
+                <button id="reviewRetryErrorsBtn" class="py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-sm transition shadow-lg">專注改正錯字 (<span id="wrongWordCount">0</span>)</button>
+                <button id="reviewHomeBtn" class="py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-200 font-bold text-sm transition border border-slate-600">返回主選單</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameOverModal" class="hidden absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+        <div class="ink-card p-8 rounded-3xl max-w-md w-full text-center relative overflow-hidden">
+            <h2 id="gameOverTitle" class="text-4xl font-calligraphy text-amber-400 glow-gold mb-1">水 鄉 大 捷</h2>
+            <p class="text-sm text-gray-400 mb-6 font-bold tracking-widest">DEFENDED ANCIENT WATER TOWN</p>
+
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+                    <span class="text-xs text-gray-400 block">戰功 SCORE</span>
+                    <span id="finalScore" class="text-2xl font-bold text-amber-400 font-mono">0</span>
+                </div>
+                <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+                    <span class="text-xs text-gray-400 block">最高連斬 COMBO</span>
+                    <span id="finalCombo" class="text-2xl font-bold text-amber-400 font-mono">0</span>
+                </div>
+            </div>
+
+            <button id="playAgainBtn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-red-600 via-amber-500 to-red-700 text-black font-black text-xl hover:brightness-110 transition font-calligraphy">再 戰 水 鄉 守 衛</button>
+        </div>
+    </div>
+
+    <script>
+        let gameState = 'START';
+        let writer = null;
+
+        // Expanded comprehensive vocabulary banks for Hong Kong primary schools (P1 - P6)
+        const gradeVocabularies = {
+            'P1': { 
+                name: '小一詞庫', 
+                pool: ['學習', '努力', '學校', '朋友', '天空', '水果', '花草', '日月', '手腳', '看書', '寫字', '快樂', '太陽', '小鳥', '聽講', '老師', '同學', '回家', '早晨', '身體', '爸爸', '媽媽', '哥哥', '姐姐', '弟弟', '妹妹', '貓狗', '魚蝦', '青草', '大樹', '紅花', '白雲', '河流', '小山', '開門', '關窗', '跑步', '跳舞', '唱歌', '畫畫', '早安', '再見', '謝謝', '請坐', '鉛筆', '書本', '書包', '桌椅', '上學', '放學'] 
+            },
+            'P2': { 
+                name: '小二詞庫', 
+                pool: ['清晨', '溫暖', '勇敢', '禮貌', '活潑', '美麗', '幫忙', '照顧', '認真', '聰明', '收拾', '整齊', '誠實', '保護', '珍惜', '植物', '動物', '季節', '春夏', '秋冬', '圖書', '操場', '功課', '考試', '鉛筆', '橡皮', '書包', '桌椅', '黑板', '笑容', '聲音', '羽毛', '翅膀', '飛行', '游水', '奔跑', '跳遠', '投球', '拍手', '點頭', '歡笑', '跳躍', '安靜', '守規', '合作', '關心', '問候', '團結', '努力', '進步'] 
+            },
+            'P3': { 
+                name: '小三詞庫', 
+                pool: ['堅持', '故事', '休息', '聰明', '尊重', '包容', '合作', '創造', '發明', '觀察', '探究', '欣賞', '感謝', '豐富', '精采', '困難', '解決', '勇敢', '堅定', '漫長', '尋找', '發現', '秘密', '寶藏', '冒險', '成功', '失敗', '嘗試', '經驗', '分享', '關懷', '安慰', '感動', '溫馨', '團聚', '祝福', '信賴', '承諾', '守時', '專心', '虛心', '誠懇', '慷慨', '勤勞', '節儉', '禮貌', '友愛', '互助', '體諒', '包容'] 
+            },
+            'P4': { 
+                name: '小四詞庫', 
+                pool: ['勤奮', '思考', '精彩', '議論', '積極', '冷靜', '判斷', '分析', '討論', '表達', '體諒', '支援', '鼓勵', '團結', '奮鬥', '克服', '突破', '啟發', '體會', '激勵', '驕傲', '謙虛', '誠懇', '信用', '慷慨', '節約', '浪費', '環保', '自然', '生態', '保護', '資源', '科學', '實驗', '數據', '證明', '結論', '真理', '智慧', '探索', '發掘', '創新', '展望', '理想', '貢獻', '負責', '卓越', '浩瀚', '宇宙'] 
+            },
+            'P5': { 
+                name: '小五詞庫', 
+                pool: ['敬佩', '猶豫', '奧秘', '克服', '讚賞', '刻苦', '堅韌', '領悟', '反思', '歸納', '探索', '創新', '展望', '理想', '貢獻', '負責', '卓越', '浩瀚', '宇宙', '神祕', '浩大', '壯麗', '宏偉', '歷史', '文化', '傳承', '傳統', '現代', '科技', '發展', '變遷', '社會', '國家', '繁榮', '穩定', '和平', '友誼', '合作', '共贏', '精益求精', '集思廣益', '推陳出新', '受益匪淺', '發人深省', '司空見慣', '見多識廣', '別具一格', '巧奪天工', '重於泰山'] 
+            },
+            'P6': { 
+                name: '小六詞庫', 
+                pool: ['宏偉', '斟酌', '睿智', '堅韌', '獨當一面', '博學多才', '融會貫通', '溫故知新', '高瞻遠矚', '自強不息', '胸懷大志', '百折不撓', '腳踏實地', '精益求精', '集思廣益', '推陳出新', '受益匪淺', '發人深省', '司空見慣', '見多識廣', '別具一格', '巧奪天工', '重於泰山', '水滴石穿', '持之以恆', '孜孜不倦', '全神貫注', '胸有成竹', '井井有條', '循序漸進', '觸類旁通', '舉一反三', '發奮圖強', '繩鋸木斷', '鐵杵成針', '厚積薄發', '精誠所至', '金石為開', '水到渠成', '錦上添花'] 
+            }
+        };
+
+        let activeGradeKey = null;
+
+        let hp = 100;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let isGuidedMode = true;
+        let isRandomOrder = false;
+
+        let isDrawing = false;
+        let dictationCtx = null;
+        let strokeHistory = [];
+        let dictationResults = [];
+
+        const DEFAULT_HERO_IMG = "https://live.staticflickr.com/65535/55590224936_9b150393c9_z.jpg";
+        let customHeroImageBase64 = null;
+        let customEnemyImageBase64 = null;
+
+        let originalWordBank = ['學', '習', '努', '力', '香', '港'];
+        let wordBank = ['學', '習', '努', '力', '香', '港'];
+        let currentWordIndex = 0;
+
+        const enemies = [
+            { name: "水鄉水賊", icon: "fa-user-ninja", color: "text-amber-400" },
+            { name: "獨眼海盜", icon: "fa-skull-crossbones", color: "text-red-500" },
+            { name: "黑風寨主", icon: "fa-mask", color: "text-cyan-400" },
+            { name: "鐵甲山匪", icon: "fa-shield-halved", color: "text-emerald-400" }
+        ];
+
+        window.showToast = function(msg) {
+            const toast = document.getElementById('toastMessage');
+            if (toast) {
+                toast.textContent = msg;
+                toast.classList.remove('opacity-0');
+                setTimeout(() => toast.classList.add('opacity-0'), 2500);
+            }
+        };
+
+        function getRandomWordsFromPool(poolArray, count) {
+            const shuffled = [...poolArray].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        function initDictationCanvas() {
+            const canvas = document.getElementById('dictationCanvas');
+            const writerTarget = document.getElementById('hanziWriterTarget');
+            if (!canvas || !writerTarget) return;
+
+            const size = Math.min(window.innerWidth * 0.38, window.innerHeight * 0.42, 260);
+            canvas.width = size;
+            canvas.height = size;
+            dictationCtx = canvas.getContext('2d');
+            clearDictationCanvas();
+
+            // Paint-like behaviour: pointerdown to start, pointerup/pointercancel to stop
+            canvas.onpointerdown = startDictationStroke;
+            canvas.onpointermove = drawDictationStroke;
+            canvas.onpointerup = endDictationStroke;
+            canvas.onpointercancel = endDictationStroke;
+        }
+
+        function clearDictationCanvas() {
+            const canvas = document.getElementById('dictationCanvas');
+            if (dictationCtx && canvas) {
+                dictationCtx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            strokeHistory = [];
+        }
+
+        function startDictationStroke(e) {
+            isDrawing = true;
+            const canvas = document.getElementById('dictationCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (dictationCtx) {
+                dictationCtx.strokeStyle = "#fef08a";
+                dictationCtx.lineWidth = 11;
+                dictationCtx.lineCap = "round";
+                dictationCtx.lineJoin = "round";
+                dictationCtx.beginPath();
+                dictationCtx.moveTo(x, y);
+            }
+            strokeHistory.push([{ x, y }]);
+        }
+
+        function drawDictationStroke(e) {
+            if (!isDrawing || !dictationCtx) return;
+            const canvas = document.getElementById('dictationCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            dictationCtx.lineTo(x, y);
+            dictationCtx.stroke();
+
+            if (strokeHistory.length > 0) {
+                strokeHistory[strokeHistory.length - 1].push({ x, y });
+            }
+        }
+
+        function endDictationStroke() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            if (dictationCtx) {
+                dictationCtx.beginPath();
+            }
+        }
+
+        function resizeWriterFrame() {
+            const size = Math.min(window.innerWidth * 0.38, window.innerHeight * 0.42, 260);
+            const writerTarget = document.getElementById('hanziWriterTarget');
+            const dictationCanvas = document.getElementById('dictationCanvas');
+
+            if (writerTarget) {
+                writerTarget.style.width = `${size}px`;
+                writerTarget.style.height = `${size}px`;
+            }
+            if (dictationCanvas) {
+                dictationCanvas.width = size;
+                dictationCanvas.height = size;
+                dictationCanvas.style.width = `${size}px`;
+                dictationCanvas.style.height = `${size}px`;
+            }
+
+            if (wordBank[currentWordIndex]) {
+                initHanziWriter(wordBank[currentWordIndex]);
+            }
+        }
+
+        function initHanziWriter(char) {
+            const writerTarget = document.getElementById('hanziWriterTarget');
+            const dictationCanvas = document.getElementById('dictationCanvas');
+            const animateBtn = document.getElementById('animateBtn');
+            const eraserBtn = document.getElementById('eraserBtn');
+            const submitBtn = document.getElementById('submitQuizBtn');
+
+            if (!writerTarget) return;
+            writerTarget.innerHTML = '';
+            clearDictationCanvas();
+
+            const size = Math.min(window.innerWidth * 0.38, window.innerHeight * 0.42, 260);
+
+            if (isGuidedMode) {
+                if (dictationCanvas) dictationCanvas.classList.add('hidden');
+                if (eraserBtn) eraserBtn.classList.add('hidden');
+                if (submitBtn) submitBtn.classList.add('hidden');
+                if (animateBtn) animateBtn.classList.remove('hidden');
+
+                const charTitle = document.getElementById('targetCharTitle');
+                const enemyCharBadge = document.getElementById('enemyCharBadge');
+                if (charTitle) charTitle.textContent = char;
+                if (enemyCharBadge) enemyCharBadge.textContent = char;
+
+                writer = HanziWriter.create('hanziWriterTarget', char, {
+                    width: size,
+                    height: size,
+                    padding: 8,
+                    showOutline: true,
+                    showCharacter: false,
+                    strokeAnimationSpeed: 1.2,
+                    strokeColor: '#f59e0b',
+                    outlineColor: 'rgba(245, 158, 11, 0.25)',
+                    drawingColor: '#38bdf8',
+                    strokeTolerance: 0.05,
+                    showHintAfterMisses: 2
+                });
+
+                writer.quiz({
+                    onMistake: function(strokeData) {
+                        combo = 0;
+                        hp = Math.max(0, hp - 8);
+                        if (window.showToast) window.showToast("⚠️ 筆劃偏差！守城士氣受挫！");
+                        if (hp <= 0) endGame(false);
+                    },
+                    onCorrectStroke: function(strokeData) {
+                        combo++;
+                        maxCombo = Math.max(maxCombo, combo);
+                        score += 100 * combo;
+
+                        const strokeProgressText = document.getElementById('strokeProgressText');
+                        if (strokeProgressText) {
+                            strokeProgressText.textContent = `筆劃: ${strokeData.strokeNum + 1} / ${strokeData.totalStrokes}`;
+                        }
+                    },
+                    onComplete: function() {
+                        handleStrokeComplete();
+                    }
+                });
+            } else {
+                if (dictationCanvas) dictationCanvas.classList.remove('hidden');
+                if (eraserBtn) eraserBtn.classList.remove('hidden');
+                if (submitBtn) {
+                    submitBtn.classList.remove('hidden');
+                    if (currentWordIndex === wordBank.length - 1) {
+                        submitBtn.innerHTML = "<span>完成交卷 ✅</span>";
+                    } else {
+                        submitBtn.innerHTML = "<span>下一字 ➡️</span>";
+                    }
+                }
+                if (animateBtn) animateBtn.classList.add('hidden');
+
+                const charTitle = document.getElementById('targetCharTitle');
+                const enemyCharBadge = document.getElementById('enemyCharBadge');
+                if (charTitle) charTitle.textContent = "？";
+                if (enemyCharBadge) enemyCharBadge.textContent = "？";
+
+                initDictationCanvas();
+
+                writer = HanziWriter.create('hanziWriterTarget', char, {
+                    width: size,
+                    height: size,
+                    padding: 8,
+                    showOutline: false,
+                    showCharacter: false,
+                    strokeColor: '#f59e0b',
+                    drawingColor: 'rgba(0, 0, 0, 0)'
+                });
+            }
+
+            const enemyImgEl = document.getElementById('enemyImgEl');
+            const enemyIcon = document.getElementById('enemyIcon');
+            const enemyNameTag = document.getElementById('enemyNameTag');
+
+            if (customEnemyImageBase64) {
+                if (enemyImgEl) {
+                    enemyImgEl.src = customEnemyImageBase64;
+                    enemyImgEl.classList.remove('hidden');
+                }
+                if (enemyIcon) enemyIcon.classList.add('hidden');
+                if (enemyNameTag) enemyNameTag.textContent = "極惡頭目";
+                document.getElementById('resetEnemyPhotoBtn')?.classList.remove('hidden');
+            } else {
+                if (enemyImgEl) enemyImgEl.classList.add('hidden');
+                if (enemyIcon) {
+                    enemyIcon.className = `fa-solid ${enemies[currentWordIndex % enemies.length].icon} text-7xl ${enemies[currentWordIndex % enemies.length].color} drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]`;
+                }
+                if (enemyNameTag) enemyNameTag.textContent = enemies[currentWordIndex % enemies.length].name;
+                document.getElementById('resetEnemyPhotoBtn')?.classList.add('hidden');
+            }
+
+            const animateBtnEl = document.getElementById('animateBtn');
+            if (animateBtnEl) {
+                animateBtnEl.onclick = () => {
+                    if (writer) writer.animateCharacter();
+                };
+            }
+        }
+
+        function handleStrokeComplete() {
+            const heroCard = document.getElementById('heroCard');
+            const enemyCard = document.getElementById('enemyCard');
+
+            if (heroCard) heroCard.classList.add('slash-anim');
+            setTimeout(() => {
+                if (enemyCard) enemyCard.classList.add('hit-anim');
+            }, 250);
+
+            setTimeout(() => {
+                if (heroCard) heroCard.classList.remove('slash-anim');
+                if (enemyCard) enemyCard.classList.remove('hit-anim');
+
+                score += 500;
+                currentWordIndex++;
+
+                if (currentWordIndex >= wordBank.length) {
+                    endGame(true);
+                } else {
+                    loadCurrentCharacter();
+                }
+            }, 700);
+        }
+
+        // Relaxed evaluation for children's handwriting style
+        function evaluateDictation() {
+            const canvas = document.getElementById('dictationCanvas');
+            if (!canvas || !dictationCtx) return;
+
+            const currentChar = wordBank[currentWordIndex];
+            const size = canvas.width;
+            const userStrokeCount = strokeHistory.length;
+
+            const refCanvas = document.createElement('canvas');
+            refCanvas.width = size;
+            refCanvas.height = size;
+            const refCtx = refCanvas.getContext('2d');
+
+            refCtx.fillStyle = '#ffffff';
+            refCtx.font = `bold ${Math.floor(size * 0.72)}px "Noto Serif TC", serif`;
+            refCtx.textAlign = 'center';
+            refCtx.textBaseline = 'middle';
+            refCtx.fillText(currentChar, size / 2, size / 2);
+
+            const userImgData = dictationCtx.getImageData(0, 0, size, size).data;
+            const refImgData = refCtx.getImageData(0, 0, size, size).data;
+
+            let refPixelCount = 0;
+            let totalUserPixels = 0;
+            let coveredRefPixels = 0;
+
+            for (let i = 0; i < userImgData.length; i += 16) {
+                const userAlpha = userImgData[i + 3];
+                const refAlpha = refImgData[i + 3];
+
+                if (refAlpha > 35) refPixelCount++;
+                if (userAlpha > 35) {
+                    totalUserPixels++;
+                    if (refAlpha > 25) coveredRefPixels++;
+                }
+            }
+
+            const structuralMatchRate = refPixelCount > 0 ? (coveredRefPixels / refPixelCount) : 0;
+            
+            let accuracyScore = Math.round(structuralMatchRate * 125);
+            accuracyScore = Math.max(0, Math.min(100, accuracyScore));
+
+            const isSuccess = accuracyScore >= 30 && userStrokeCount > 0 && totalUserPixels > 20;
+            const userCanvasDataUrl = canvas.toDataURL();
+
+            dictationResults.push({
+                char: currentChar,
+                userCanvasDataUrl: userCanvasDataUrl,
+                similarity: Math.max(accuracyScore, isSuccess ? 75 : accuracyScore),
+                pass: isSuccess
+            });
+
+            if (isSuccess) {
+                score += 500;
+                combo++;
+                maxCombo = Math.max(maxCombo, combo);
+            } else {
+                combo = 0;
+            }
+
+            currentWordIndex++;
+            if (currentWordIndex >= wordBank.length) {
+                showDictationReviewModal();
+            } else {
+                loadCurrentCharacter();
+            }
+        }
+
+        function showDictationReviewModal() {
+            document.getElementById('pauseGameBtn')?.classList.add('hidden');
+            const modal = document.getElementById('dictationReviewModal');
+            const reviewGrid = document.getElementById('reviewGrid');
+            const wrongWordCountEl = document.getElementById('wrongWordCount');
+
+            if (!modal || !reviewGrid) return;
+            reviewGrid.innerHTML = '';
+
+            const wrongCount = dictationResults.filter(r => !r.pass).length;
+            if (wrongWordCountEl) wrongWordCountEl.textContent = wrongCount;
+
+            dictationResults.forEach(item => {
+                const itemCard = document.createElement('div');
+                itemCard.className = `p-3.5 rounded-2xl border-2 flex flex-col items-center justify-between relative bg-slate-900/90 ${item.pass ? 'border-emerald-500/70' : 'border-red-500/70'}`;
+
+                itemCard.innerHTML = `
+                    <div class="flex items-center justify-between w-full mb-1.5">
+                        <span class="text-sm text-amber-300 font-bold">目標字: <strong class="text-lg text-amber-200">${item.char}</strong></span>
+                        <span class="text-xs px-2.5 py-0.5 rounded font-bold font-mono ${item.pass ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/50' : 'bg-red-950 text-red-300 border border-red-500/50'}">
+                            吻合度: ${item.similarity}%
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5 w-full my-2">
+                        <div class="flex flex-col items-center bg-slate-950/80 border border-amber-500/40 rounded-xl p-2 relative overflow-hidden">
+                            <span class="text-xs text-amber-400 font-bold mb-1">正確標準字</span>
+                            <div class="w-18 h-18 rounded-lg bg-slate-900/90 border border-amber-400/30 flex items-center justify-center relative">
+                                <span class="text-5xl text-amber-300 font-calligraphy font-black">${item.char}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col items-center bg-slate-950/80 border border-slate-800 rounded-xl p-2 relative overflow-hidden">
+                            <span class="text-xs text-gray-300 font-bold mb-1">手寫筆跡</span>
+                            <div class="w-18 h-18 rounded-lg bg-slate-900/90 border border-slate-700 flex items-center justify-center relative overflow-hidden">
+                                <span class="absolute inset-0 flex items-center justify-center text-5xl text-slate-800/40 font-calligraphy select-none pointer-events-none">${item.char}</span>
+                                <img src="${item.userCanvasDataUrl}" class="absolute inset-0 w-full h-full object-contain z-10" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-full flex items-center justify-between mt-1 pt-1.5 border-t border-slate-800/80">
+                        <span class="text-xs font-bold ${item.pass ? 'text-emerald-400' : 'text-red-400'}">
+                            ${item.pass ? '✔ 順利通關合格 (PASS)' : '✖ 未寫出此字 (FAIL)'}
+                        </span>
+                        <button onclick="speakCantonese('${item.char}')" class="text-amber-400 hover:text-amber-200 text-xs px-2.5 py-1 rounded bg-amber-950/60 border border-amber-500/30 font-bold">
+                            <i class="fa-solid fa-volume-high mr-1"></i>讀音
+                        </button>
+                    </div>
+                `;
+                reviewGrid.appendChild(itemCard);
+            });
+
+            modal.classList.remove('hidden');
+        }
+
+        async function getJyutping(char) {
+            try {
+                const res = await fetch(`https://words.hk/api/v1/words/?q=${encodeURIComponent(char)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.length > 0 && data[0].jyutping) {
+                        return data[0].jyutping;
+                    }
+                }
+            } catch (e) {
+                console.log("Jyutping fetch fallback:", e);
+            }
+            return "---";
+        }
+
+        function speakCantonese(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-HK';
+                utterance.rate = 0.85;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function endGame(isWin) {
+            gameState = 'GAME_OVER';
+            document.getElementById('pauseGameBtn')?.classList.add('hidden');
+            const gameOverModal = document.getElementById('gameOverModal');
+            const gameOverTitle = document.getElementById('gameOverTitle');
+            const finalScore = document.getElementById('finalScore');
+            const finalCombo = document.getElementById('finalCombo');
+
+            if (gameOverTitle) gameOverTitle.textContent = isWin ? "水 鄉 大 捷" : "城 關 告 急";
+            if (finalScore) finalScore.textContent = score;
+            if (finalCombo) finalCombo.textContent = `${maxCombo}x`;
+
+            if (gameOverModal) gameOverModal.classList.remove('hidden');
+        }
+
+        window.saveToSlot = function(slotNumber) {
+            const slotNameInput = document.getElementById('saveSlotNameInput');
+            const slotTitle = slotNameInput?.value.trim() || `存檔槽 ${slotNumber}`;
+            window.saveCloudDataToSlot(slotNumber, slotTitle);
+            document.getElementById('saveModal')?.classList.add('hidden');
+        };
+
+        window.renderSaveSlotsList = function() {
+            const container = document.getElementById('saveSlotsListContainer');
+            if (!container) return;
+
+            const localSlots = JSON.parse(localStorage.getItem('ink_slash_save_slots') || '{}');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= 3; i++) {
+                const slot = localSlots[i];
+                const itemRow = document.createElement('div');
+                itemRow.className = "bg-slate-900 border border-amber-500/40 rounded-xl p-3 flex items-center justify-between text-xs shadow-md hover:border-amber-400 transition";
+
+                if (slot) {
+                    itemRow.innerHTML = `
+                        <div class="flex flex-col truncate pr-2 text-left">
+                            <span class="text-amber-200 font-bold truncate text-sm">存檔槽 ${i}: ${slot.title}</span>
+                            <span class="text-xs text-gray-400 truncate max-w-[200px]">字詞: ${slot.words}</span>
+                        </div>
+                        <div class="flex items-center space-x-2 flex-shrink-0">
+                            <button type="button" class="load-slot-btn text-xs text-amber-950 bg-amber-400 hover:bg-amber-300 font-black px-3.5 py-1.5 rounded-lg border border-amber-300 shadow transition">
+                                📂 載入 Load
+                            </button>
+                            <button type="button" class="delete-slot-btn text-xs text-red-400 hover:text-red-200 bg-red-950/80 px-3 py-1.5 rounded-lg border border-red-500/40">
+                                ✖
+                            </button>
+                        </div>
+                    `;
+
+                    itemRow.querySelector('.load-slot-btn').onclick = () => {
+                        const input = document.getElementById('parentCustomInput');
+                        if (input) input.value = slot.words;
+                        document.getElementById('loadModal')?.classList.add('hidden');
+                        if (window.showToast) window.showToast(`📂 已成功載入「${slot.title}」！`);
+                    };
+
+                    itemRow.querySelector('.delete-slot-btn').onclick = (e) => {
+                        e.stopPropagation();
+                        let currentSlots = JSON.parse(localStorage.getItem('ink_slash_save_slots') || '{}');
+                        delete currentSlots[i];
+                        localStorage.setItem('ink_slash_save_slots', JSON.stringify(currentSlots));
+                        window.renderSaveSlotsList();
+                        if (window.showToast) window.showToast(`🗑️ 已刪除存檔槽 ${i}`);
+                    };
+                } else {
+                    itemRow.innerHTML = `
+                        <span class="text-xs text-gray-500 italic py-1">存檔槽 ${i} (尚無紀錄)</span>
+                        <button type="button" onclick="saveToSlot(${i})" class="text-xs text-emerald-300 bg-emerald-950 hover:bg-emerald-900 px-3.5 py-1.5 rounded border border-emerald-500/40 font-bold">
+                            在此存檔
+                        </button>
+                    `;
+                }
+                container.appendChild(itemRow);
+            }
+        };
+
+        function startWordBankSession(bank) {
+            wordBank = [...bank];
+            if (isRandomOrder) {
+                wordBank.sort(() => Math.random() - 0.5);
+            }
+            dictationResults = [];
+            currentWordIndex = 0;
+            score = 0;
+            combo = 0;
+            hp = 100;
+            gameState = 'PLAYING';
+
+            document.getElementById('pauseGameBtn')?.classList.remove('hidden');
+            resizeWriterFrame();
+            loadCurrentCharacter();
+        }
+
+        function loadCurrentCharacter() {
+            const char = wordBank[currentWordIndex];
+            const wordIndexTag = document.getElementById('wordIndexTag');
+            if (wordIndexTag) wordIndexTag.textContent = `目標 ${currentWordIndex + 1} / ${wordBank.length}`;
+
+            getJyutping(char).then(jyutping => {
+                const jyutpingText = document.getElementById('jyutpingText');
+                if (jyutpingText) jyutpingText.textContent = jyutping;
+            });
+
+            initHanziWriter(char);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const guidedBtn = document.getElementById('startModeGuidedBtn');
+            const quizBtn = document.getElementById('startModeQuizBtn');
+
+            if (guidedBtn && quizBtn) {
+                guidedBtn.addEventListener('click', () => {
+                    isGuidedMode = true;
+                    guidedBtn.className = "px-4 py-2 rounded-lg text-xs font-bold border transition bg-amber-500 text-black border-amber-400 shadow";
+                    quizBtn.className = "px-4 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-400 border-slate-700 hover:text-amber-200";
+                });
+
+                quizBtn.addEventListener('click', () => {
+                    isGuidedMode = false;
+                    quizBtn.className = "px-4 py-2 rounded-lg text-xs font-bold border transition bg-amber-500 text-black border-amber-400 shadow";
+                    guidedBtn.className = "px-4 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-400 border-slate-700 hover:text-amber-200";
+                });
+            }
+
+            const seqBtn = document.getElementById('orderSequentialBtn');
+            const randBtn = document.getElementById('orderRandomBtn');
+            if (seqBtn && randBtn) {
+                seqBtn.addEventListener('click', () => {
+                    isRandomOrder = false;
+                    seqBtn.className = "px-4 py-2 rounded-lg text-xs font-bold border transition bg-amber-500 text-black border-amber-400 shadow";
+                    randBtn.className = "px-4 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-400 border-slate-700 hover:text-amber-200";
+                });
+
+                randBtn.addEventListener('click', () => {
+                    isRandomOrder = true;
+                    randBtn.className = "px-4 py-2 rounded-lg text-xs font-bold border transition bg-amber-500 text-black border-amber-400 shadow";
+                    seqBtn.className = "px-4 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-400 border-slate-700 hover:text-amber-200";
+                });
+            }
+
+            const heroPhotoInputs = [document.getElementById('heroPhotoInput'), document.getElementById('modalHeroPhotoInput')];
+            heroPhotoInputs.forEach(input => {
+                if (!input) return;
+                input.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            customHeroImageBase64 = evt.target.result;
+                            const heroImgEl = document.getElementById('heroImgEl');
+                            if (heroImgEl) heroImgEl.src = customHeroImageBase64;
+                            document.getElementById('resetHeroPhotoBtn')?.classList.remove('hidden');
+                            if (window.showToast) window.showToast("📸 成功替換主角相片！");
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            });
+
+            const enemyPhotoInputs = [document.getElementById('enemyPhotoInput'), document.getElementById('modalEnemyPhotoInput')];
+            enemyPhotoInputs.forEach(input => {
+                if (!input) return;
+                input.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            customEnemyImageBase64 = evt.target.result;
+                            const enemyImgEl = document.getElementById('enemyImgEl');
+                            const enemyIcon = document.getElementById('enemyIcon');
+                            const enemyNameTag = document.getElementById('enemyNameTag');
+
+                            if (enemyImgEl) {
+                                enemyImgEl.src = customEnemyImageBase64;
+                                enemyImgEl.classList.remove('hidden');
+                            }
+                            if (enemyIcon) enemyIcon.classList.add('hidden');
+                            if (enemyNameTag) enemyNameTag.textContent = "極惡頭目";
+                            document.getElementById('resetEnemyPhotoBtn')?.classList.remove('hidden');
+
+                            if (window.showToast) window.showToast("📸 成功替換敵人相片！");
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            });
+
+            document.getElementById('resetHeroPhotoBtn')?.addEventListener('click', () => {
+                customHeroImageBase64 = null;
+                const heroImgEl = document.getElementById('heroImgEl');
+                if (heroImgEl) heroImgEl.src = DEFAULT_HERO_IMG;
+                document.getElementById('resetHeroPhotoBtn')?.classList.add('hidden');
+                if (window.showToast) window.showToast("已重置為預設主角：關雲長");
+            });
+
+            document.getElementById('resetEnemyPhotoBtn')?.addEventListener('click', () => {
+                customEnemyImageBase64 = null;
+                const enemyImgEl = document.getElementById('enemyImgEl');
+                const enemyIcon = document.getElementById('enemyIcon');
+                if (enemyImgEl) enemyImgEl.classList.add('hidden');
+                if (enemyIcon) enemyIcon.classList.remove('hidden');
+                document.getElementById('resetEnemyPhotoBtn')?.classList.add('hidden');
+                if (window.showToast) window.showToast("已重置為預設敵人！");
+                if (wordBank[currentWordIndex]) initHanziWriter(wordBank[currentWordIndex]);
+            });
+
+            document.getElementById('eraserBtn')?.addEventListener('click', () => {
+                clearDictationCanvas();
+                if (window.showToast) window.showToast("🧹 已清除手寫痕跡，請重新默寫！");
+            });
+
+            document.getElementById('submitQuizBtn')?.addEventListener('click', () => {
+                if (!isGuidedMode) {
+                    if (strokeHistory.length === 0) {
+                        if (window.showToast) window.showToast("⚠️ 請先在九宮格寫上漢字再進入下一字！");
+                        return;
+                    }
+                    evaluateDictation();
+                }
+            });
+
+            document.getElementById('guideToggleBtn')?.addEventListener('click', () => {
+                isGuidedMode = !isGuidedMode;
+                const toggleText = document.getElementById('guideToggleText');
+                if (toggleText) {
+                    toggleText.textContent = isGuidedMode ? "描紅/默寫切換 (描紅)" : "描紅/默寫切換 (默寫)";
+                }
+                if (window.showToast) {
+                    window.showToast(isGuidedMode ? "已切換至：標準描紅模式" : "已切換至：自由默寫模式");
+                }
+                if (wordBank[currentWordIndex]) initHanziWriter(wordBank[currentWordIndex]);
+            });
+
+            document.getElementById('speakBtn')?.addEventListener('click', () => {
+                if (wordBank[currentWordIndex]) speakCantonese(wordBank[currentWordIndex]);
+            });
+
+            document.getElementById('presetBtn')?.addEventListener('click', () => {
+                const input = document.getElementById('parentCustomInput');
+                if (input) input.value = "學習 努力 香港 飛機 武俠 龍飛鳳舞";
+            });
+
+            const gradeBtns = document.querySelectorAll('.grade-btn');
+            gradeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const gradeKey = e.currentTarget.getAttribute('data-grade');
+                    const vocab = gradeVocabularies[gradeKey];
+                    if (vocab) {
+                        activeGradeKey = gradeKey;
+                        const input = document.getElementById('parentCustomInput');
+                        
+                        const sampleWords = getRandomWordsFromPool(vocab.pool, 20);
+                        if (input) input.value = sampleWords.join(' ');
+
+                        gradeBtns.forEach(b => {
+                            b.className = "grade-btn px-2.5 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-300 border-slate-700 hover:border-amber-400 hover:text-amber-300";
+                        });
+                        e.currentTarget.className = "grade-btn px-2.5 py-2 rounded-lg text-xs font-bold border transition bg-amber-500 text-black border-amber-400 shadow";
+
+                        if (window.showToast) window.showToast(`已載入 ${vocab.name} (海量詞庫隨機抽取20字)！`);
+                    }
+                });
+            });
+
+            const customInputEl = document.getElementById('parentCustomInput');
+            if (customInputEl) {
+                customInputEl.addEventListener('input', () => {
+                    if (customInputEl.value.trim().length > 0) {
+                        activeGradeKey = null;
+                        gradeBtns.forEach(b => {
+                            b.className = "grade-btn px-2.5 py-2 rounded-lg text-xs font-bold border transition bg-slate-800 text-gray-300 border-slate-700 hover:border-amber-400 hover:text-amber-300";
+                        });
+                    }
+                });
+            }
+
+            document.getElementById('startGameBtn')?.addEventListener('click', () => {
+                const customWordsStr = document.getElementById('parentCustomInput')?.value.trim();
+                
+                if (customWordsStr && customWordsStr.length > 0) {
+                    const parsedWords = customWordsStr.replace(/[^\u4e00-\u9fa5]/g, '').split('');
+                    if (parsedWords.length > 0) {
+                        originalWordBank = parsedWords;
+                    }
+                } else if (activeGradeKey && gradeVocabularies[activeGradeKey]) {
+                    const pool = gradeVocabularies[activeGradeKey].pool;
+                    const randomPickedWords = getRandomWordsFromPool(pool, 20); 
+                    originalWordBank = randomPickedWords.join('').slice(0, 25).split('');
+                } else {
+                    originalWordBank = getRandomWordsFromPool(gradeVocabularies['P1'].pool, 20).join('').slice(0, 25).split('');
+                }
+
+                if (!originalWordBank || originalWordBank.length === 0) {
+                    if (window.showToast) window.showToast("⚠️ 請先輸入中文漢字或選擇年級詞庫！");
+                    return;
+                }
+
+                startWordBankSession(originalWordBank);
+                document.getElementById('startModal')?.classList.add('hidden');
+            });
+
+            // Pause Menu Event Handlers with Mode-Aware Options
+            const pauseGameBtn = document.getElementById('pauseGameBtn');
+            const pauseModal = document.getElementById('pauseModal');
+            const pauseResumeBtn = document.getElementById('pauseResumeBtn');
+            const pauseHomeBtn = document.getElementById('pauseHomeBtn');
+            const pauseSurrenderBtn = document.getElementById('pauseSurrenderBtn');
+
+            if (pauseGameBtn) {
+                pauseGameBtn.addEventListener('click', () => {
+                    if (isGuidedMode) {
+                        if (pauseSurrenderBtn) pauseSurrenderBtn.classList.add('hidden');
+                    } else {
+                        if (pauseSurrenderBtn) pauseSurrenderBtn.classList.remove('hidden');
+                    }
+                    if (pauseModal) pauseModal.classList.remove('hidden');
+                });
+            }
+
+            if (pauseResumeBtn) {
+                pauseResumeBtn.addEventListener('click', () => {
+                    if (pauseModal) pauseModal.classList.add('hidden');
+                });
+            }
+
+            if (pauseHomeBtn) {
+                pauseHomeBtn.addEventListener('click', () => {
+                    if (pauseModal) pauseModal.classList.add('hidden');
+                    document.getElementById('pauseGameBtn')?.classList.add('hidden');
+                    document.getElementById('startModal')?.classList.remove('hidden');
+                });
+            }
+
+            if (pauseSurrenderBtn) {
+                pauseSurrenderBtn.addEventListener('click', () => {
+                    if (pauseModal) pauseModal.classList.add('hidden');
+                    showDictationReviewModal();
+                });
+            }
+
+            document.getElementById('openSaveModalBtn')?.addEventListener('click', () => {
+                document.getElementById('saveModal')?.classList.remove('hidden');
+            });
+            document.getElementById('closeSaveModalBtn')?.addEventListener('click', () => {
+                document.getElementById('saveModal')?.classList.add('hidden');
+            });
+
+            document.getElementById('openLoadModalBtn')?.addEventListener('click', () => {
+                window.renderSaveSlotsList();
+                document.getElementById('loadModal')?.classList.remove('hidden');
+            });
+            document.getElementById('closeLoadModalBtn')?.addEventListener('click', () => {
+                document.getElementById('loadModal')?.classList.add('hidden');
+            });
+
+            document.getElementById('reviewRetryAllBtn')?.addEventListener('click', () => {
+                document.getElementById('dictationReviewModal')?.classList.add('hidden');
+                startWordBankSession(originalWordBank);
+            });
+
+            document.getElementById('reviewRetryErrorsBtn')?.addEventListener('click', () => {
+                const wrongWords = dictationResults.filter(r => !r.pass).map(r => r.char);
+                if (wrongWords.length === 0) {
+                    if (window.showToast) window.showToast("🎉 太棒了！全部默寫正確，沒有錯字！");
+                    return;
+                }
+                document.getElementById('dictationReviewModal')?.classList.add('hidden');
+                startWordBankSession(wrongWords);
+            });
+
+            document.getElementById('reviewHomeBtn')?.addEventListener('click', () => {
+                document.getElementById('dictationReviewModal')?.classList.add('hidden');
+                document.getElementById('startModal')?.classList.remove('hidden');
+            });
+
+            document.getElementById('playAgainBtn')?.addEventListener('click', () => {
+                document.getElementById('gameOverModal')?.classList.add('hidden');
+                document.getElementById('startModal')?.classList.remove('hidden');
+            });
+
+            if (window.loadCloudData) window.loadCloudData();
+        });
+    </script>
+</body>
+</html>
