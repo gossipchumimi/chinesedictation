@@ -2,8 +2,8 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>漢字筆順守衛戰 - 墨斬水鄉</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>漢字筆順守衛戰 - 墨斬水鄉 (香港小學中文默書防線)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
 
+    <!-- Firebase SDK Setup -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -48,7 +49,7 @@
             const slotName = customTitle || `存檔槽 ${slotNumber}`;
 
             if (!currentWords) {
-                if (window.showToast) window.showToast("⚠️ 請先在框內輸入要儲存的字詞！");
+                if (window.showToast) window.showToast("⚠️ 請先喺框內輸入要儲存嘅字！");
                 return;
             }
 
@@ -106,11 +107,13 @@
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #080c14;
             color: #f1f5f9;
-            overflow: hidden;
+            overflow-x: hidden;
             width: 100vw;
             height: 100vh;
+            height: -webkit-fill-available;
             margin: 0;
             padding: 0;
+            -webkit-overflow-scrolling: touch;
         }
         .font-calligraphy { 
             font-family: 'Noto Serif TC', serif; 
@@ -151,20 +154,25 @@
         }
 
         #dictationCanvas, #hanziWriterTarget {
-            touch-action: none;
+            touch-action: none !important;
+            -webkit-tap-highlight-color: transparent;
         }
 
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.8); border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #fbbf24; }
+
+        input, textarea {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
     </style>
 </head>
-<body class="relative flex items-center justify-center">
+<body class="relative flex items-center justify-center overflow-x-hidden">
 
-    <div id="toastMessage" class="fixed top-5 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 border-2 border-amber-400 text-amber-200 px-5 py-2.5 rounded-2xl shadow-2xl font-bold font-calligraphy opacity-0 transition-opacity pointer-events-none text-base"></div>
+    <div id="toastMessage" class="fixed top-5 left-1/2 -translate-x-1/2 z-[70] bg-slate-900 border-2 border-amber-400 text-amber-200 px-5 py-2.5 rounded-2xl shadow-2xl font-bold font-calligraphy opacity-0 transition-opacity pointer-events-none text-base"></div>
     
-    <!-- 遊戲背景 -->
     <div id="bgContainer" class="absolute inset-0 z-0 bg-no-repeat" style="background-image: url('https://live.staticflickr.com/65535/55590661099_522b14d801_z.jpg'); background-size: cover; background-position: center; filter: brightness(0.65) contrast(1.1);"></div>
 
     <!-- 暫停按鈕 -->
@@ -172,11 +180,10 @@
         <i class="fa-solid fa-pause"></i>
     </button>
 
-    <!-- 遊戲畫面 -->
-    <div id="gameScene" class="absolute inset-0 z-10 flex flex-col md:flex-row items-center justify-between md:justify-around px-4 md:px-10 py-6 md:py-12 pointer-events-none max-w-[1400px] mx-auto w-full h-full overflow-y-auto md:overflow-hidden gap-4 md:gap-0">
+    <div id="gameScene" class="absolute inset-0 z-10 flex flex-col md:flex-row items-center justify-between md:justify-around px-3 sm:px-6 md:px-10 py-4 sm:py-6 md:py-12 pointer-events-none max-w-[1400px] mx-auto w-full h-full overflow-y-auto md:overflow-hidden gap-3 md:gap-0">
         
         <!-- 主角面板 -->
-        <div id="heroCard" class="w-full sm:w-[35%] md:w-[26%] max-w-[220px] h-auto md:h-[72%] min-h-[240px] flex flex-col items-center justify-between p-3 character-frame transition-all duration-300 pointer-events-auto shrink-0 mt-4 md:mt-0">
+        <div id="heroCard" class="w-full sm:w-[35%] md:w-[26%] max-w-[220px] h-auto md:h-[72%] min-h-[220px] flex flex-col items-center justify-between p-3 character-frame transition-all duration-300 pointer-events-auto shrink-0 mt-2 md:mt-0">
             <label for="heroPhotoInput" class="cursor-pointer bg-amber-950/90 hover:bg-amber-800 text-amber-300 border border-amber-500/60 px-2.5 py-1 rounded-xl text-sm font-bold shadow-lg transition flex items-center space-x-1 z-10">
                 <i class="fa-solid fa-camera"></i>
                 <span id="uploadPhotoLabel">主角相片</span>
@@ -197,7 +204,7 @@
 
         <!-- 寫字區域 -->
         <div id="writingAreaContainer" class="pointer-events-auto flex flex-col items-center z-25 flex-1 mx-0 md:mx-4 w-full scale-95 md:scale-100">
-            <div id="charHeaderInfo" class="mb-3 bg-slate-900 border-2 border-amber-500 px-6 py-2.5 rounded-2xl flex items-center space-x-4 shadow-2xl w-[292px] justify-center">
+            <div id="charHeaderInfo" class="mb-3 bg-slate-900 border-2 border-amber-500 px-5 py-2 rounded-2xl flex items-center space-x-3 shadow-2xl w-[292px] justify-center">
                 <div class="relative w-14 h-14 bg-slate-800 rounded-xl border-2 border-red-500/80 flex items-center justify-center overflow-hidden shrink-0">
                     <span id="targetCharTitle" class="text-4xl font-calligraphy text-amber-300 glow-gold z-10">學</span>
                 </div>
@@ -213,7 +220,13 @@
                 </div>
             </div>
 
-            <div id="canvasFrame" class="relative rounded-3xl p-3.5 bg-slate-900 border-4 border-amber-500 shadow-2xl flex flex-col items-center">
+            <!-- 謄文模式特有之左側標準參考示範框 -->
+            <div id="copybookReferenceBox" class="hidden mb-2 bg-slate-900/90 border-2 border-cyan-400 p-2 rounded-2xl flex items-center justify-center shadow-xl space-x-3">
+                <span class="text-xs font-bold text-cyan-300 font-calligraphy">📖 謄文範本:</span>
+                <div id="copybookRefChar" class="w-16 h-16 bg-slate-800 border border-cyan-500 rounded-xl flex items-center justify-center text-4xl text-amber-300 font-calligraphy shadow-inner"></div>
+            </div>
+
+            <div id="canvasFrame" class="relative rounded-3xl p-3 bg-slate-900 border-4 border-amber-500 shadow-2xl flex flex-col items-center">
                 <div id="canvasContainer" class="relative flex items-center justify-center" style="width: 250px; height: 250px;">
                     <div id="gridOverlay" class="absolute inset-0 rounded-xl border-2 border-red-500/50 pointer-events-none grid grid-cols-3 grid-rows-3 z-10">
                         <div class="border-r border-b border-red-500/30"></div>
@@ -226,8 +239,18 @@
                         <div class="border-r border-red-500/30"></div>
                         <div></div>
                     </div>
+
+                    <!-- HanziWriter 底層 SVG 畫布 (描紅模式使用) -->
                     <div id="hanziWriterTarget" class="absolute inset-0 bg-transparent rounded-xl overflow-hidden cursor-crosshair z-0" style="width: 250px; height: 250px;"></div>
-                    <canvas id="dictationCanvas" class="absolute inset-0 rounded-xl z-20 cursor-crosshair hidden" width="250" height="250" style="width: 250px; height: 250px; touch-action: none;"></canvas>
+                    
+                    <!-- HTML5 自由繪圖畫布 (謄文與默寫模式使用) -->
+                    <canvas id="dictationCanvas" class="absolute inset-0 rounded-xl z-20 cursor-crosshair hidden" style="width: 250px; height: 250px; touch-action: none;"></canvas>
+
+                    <!-- Loading Indicator Overlay -->
+                    <div id="charLoadingSpinner" class="hidden absolute inset-0 z-30 bg-slate-900/80 rounded-xl flex items-center justify-center space-x-2 backdrop-blur-sm">
+                        <i class="fa-solid fa-spinner fa-spin text-3xl text-amber-400"></i>
+                        <span class="text-sm font-bold text-amber-200">載入字形中...</span>
+                    </div>
                 </div>
 
                 <div class="w-full flex items-center justify-center gap-2 mt-3 z-30">
@@ -247,7 +270,7 @@
         </div>
 
         <!-- 對手面板 -->
-        <div id="enemyCard" class="w-full sm:w-[35%] md:w-[26%] max-w-[220px] h-auto md:h-[72%] min-h-[240px] flex flex-col items-center justify-between p-3 character-frame transition-all duration-300 pointer-events-auto shrink-0 mb-4 md:mb-0">
+        <div id="enemyCard" class="w-full sm:w-[35%] md:w-[26%] max-w-[220px] h-auto md:h-[72%] min-h-[220px] flex flex-col items-center justify-between p-3 character-frame transition-all duration-300 pointer-events-auto shrink-0 mb-2 md:mb-0">
             <label for="enemyPhotoInput" class="cursor-pointer bg-red-950/90 hover:bg-red-900 text-red-300 border border-red-500/60 px-2.5 py-1 rounded-xl text-sm font-bold shadow-lg transition flex items-center space-x-1 z-10">
                 <i class="fa-solid fa-camera"></i>
                 <span id="uploadEnemyPhotoLabel">對手相片</span>
@@ -271,25 +294,26 @@
         </div>
     </div>
 
+    <!-- 主選單 Modal -->
     <div id="startModal" class="absolute inset-0 z-40 flex items-center justify-center md:justify-end px-3 sm:px-6 md:pr-12 lg:pr-20 py-3 overflow-y-auto bg-no-repeat" style="background-image: url('https://live.staticflickr.com/65535/55590440216_d02384f618_z.jpg'); background-size: cover; background-position: left center;">
         
-        <div class="bg-[#111827]/95 p-4 sm:p-5 rounded-2xl max-w-[440px] w-full text-left relative shadow-[0_0_50px_rgba(0,0,0,0.9)] border border-amber-500/30 max-h-[95vh] overflow-y-auto my-auto">
+        <div class="bg-[#111827]/95 p-4 sm:p-5 rounded-2xl max-w-[440px] w-full text-left relative shadow-[0_0_50px_rgba(0,0,0,0.9)] border border-amber-500/30 max-h-[92vh] overflow-y-auto my-auto">
             
-            <h2 class="text-base sm:text-lg text-amber-400 mb-2.5 font-bold text-center font-calligraphy tracking-wider">請選擇學習模式與設定默寫詞庫</h2>
+            <h2 class="text-base sm:text-lg text-amber-400 mb-2.5 font-bold text-center font-calligraphy tracking-wider">請選擇學習模式與設定默寫字庫</h2>
 
             <div class="space-y-2.5">
                 <div class="bg-[#1f2937]/90 p-2.5 rounded-xl border border-slate-700">
                     <div class="flex justify-between items-center mb-1.5">
                         <label class="text-xs font-bold text-amber-300 flex items-center">
-                            <span class="mr-1.5">👨‍👩‍👧‍👦</span> 學生自訂默寫/考核字詞:
+                            <span class="mr-1.5">👨‍👩‍👧‍👦</span> 學生自訂默寫/考核單字:
                         </label>
                         <button id="presetBtn" type="button" class="text-[11px] text-cyan-200 bg-cyan-900 px-2.5 py-0.5 rounded border border-cyan-700 hover:bg-cyan-800 font-bold transition">預設範例</button>
                     </div>
 
                     <div class="mb-1">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-[11px] text-amber-400 font-bold">🎓 香港小學年級海量詞庫 (詞語/成語/生字):</span>
-                            <span class="text-[10px] text-gray-400">💡 自動抽約20字</span>
+                            <span class="text-[11px] text-amber-400 font-bold">🎓 香港小學教育局常用字庫 (小一至小六):</span>
+                            <span class="text-[10px] text-gray-400">💡 隨機抽約15個單字</span>
                         </div>
                         <div class="grid grid-cols-3 sm:grid-cols-6 gap-1" id="gradeSelectorGrid">
                             <button type="button" data-grade="P1" class="grade-btn px-1 py-1 rounded bg-slate-700 text-gray-300 text-[11px] font-bold border border-slate-600 hover:border-amber-400 hover:text-amber-300 transition text-center leading-tight">小一<br>(P1)</button>
@@ -320,11 +344,12 @@
                     <input type="file" id="modalEnemyPhotoInput" accept="image/*" class="hidden">
                 </div>
 
-                <div class="bg-[#1f2937]/90 p-2 rounded-xl border border-slate-700 flex justify-between items-center">
+                <div class="bg-[#1f2937]/90 p-2 rounded-xl border border-slate-700 flex flex-col space-y-1.5">
                     <span class="text-xs text-amber-400 font-bold">學習模式:</span>
-                    <div class="flex space-x-1.5">
-                        <button type="button" id="startModeGuidedBtn" class="px-2.5 py-1 rounded text-xs font-bold bg-amber-500 text-black shadow">描紅練習</button>
-                        <button type="button" id="startModeQuizBtn" class="px-2.5 py-1 rounded text-xs font-bold bg-slate-700 text-gray-300 border border-slate-600 hover:text-amber-200">默寫考核</button>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button type="button" id="startModeGuidedBtn" class="px-2 py-1.5 rounded text-[11px] font-bold bg-amber-500 text-black shadow text-center">描紅練習</button>
+                        <button type="button" id="startModeCopybookBtn" class="px-2 py-1.5 rounded text-[11px] font-bold bg-slate-700 text-gray-300 border border-slate-600 hover:text-amber-200 text-center">謄文模式</button>
+                        <button type="button" id="startModeQuizBtn" class="px-2 py-1.5 rounded text-[11px] font-bold bg-slate-700 text-gray-300 border border-slate-600 hover:text-amber-200 text-center">默寫考核</button>
                     </div>
                 </div>
 
@@ -338,13 +363,13 @@
 
                 <div class="bg-[#1f2937]/90 p-2 rounded-xl border border-slate-700">
                     <div class="flex justify-between items-center mb-1">
-                        <span class="text-xs text-amber-400 font-bold">✏️ 輸入字詞 (用空格分隔):</span>
+                        <span class="text-xs text-amber-400 font-bold">✏️ 輸入單字 (用空格分隔):</span>
                         <div class="flex space-x-1">
                             <button id="openSaveModalBtn" type="button" class="text-[10px] text-emerald-200 bg-emerald-900 hover:bg-emerald-800 px-2 py-0.5 rounded border border-emerald-700 font-bold transition">💾 存檔</button>
                             <button id="openLoadModalBtn" type="button" class="text-[10px] text-amber-200 bg-amber-900 hover:bg-amber-800 px-2 py-0.5 rounded border border-amber-700 font-bold transition">📂 載入</button>
                         </div>
                     </div>
-                    <textarea id="parentCustomInput" rows="2" class="w-full bg-[#111827] border border-slate-600 rounded-lg p-2 text-xs text-amber-100 focus:outline-none focus:border-amber-500 font-bold resize-none" placeholder="請輸入詞庫，例如: 學習 努力 香港"></textarea>
+                    <textarea id="parentCustomInput" rows="2" class="w-full bg-[#111827] border border-slate-600 rounded-lg p-2 text-xs text-amber-100 focus:outline-none focus:border-amber-500 font-bold resize-none" placeholder="請輸入單字，例如: 學 習 努 力 香 港"></textarea>
                 </div>
 
                 <button id="startGameBtn" type="button" class="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-red-700 via-red-600 to-red-700 text-white font-black text-sm hover:brightness-110 active:scale-95 transition shadow-lg font-calligraphy text-center border-t border-red-400">
@@ -354,18 +379,19 @@
         </div>
     </div>
 
-    <div id="dictationReviewModal" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-start pt-8 px-4 bg-cover bg-center bg-no-repeat overflow-y-auto" style="background-image: url('https://live.staticflickr.com/65535/55589586752_5e5ab93366_z.jpg');">
-        <div class="absolute inset-0 bg-black/45 pointer-events-none"></div>
+    <!-- 默寫總結與校對 Modal -->
+    <div id="dictationReviewModal" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-start pt-6 sm:pt-10 px-4 bg-cover bg-center bg-no-repeat overflow-y-auto" style="background-image: url('https://live.staticflickr.com/65535/55589586752_5e5ab93366_z.jpg');">
+        <div class="absolute inset-0 bg-black/35 pointer-events-none"></div>
         
         <div class="relative z-10 w-full max-w-6xl flex flex-col items-center flex-1 pb-10">
             <h2 class="text-3xl sm:text-4xl font-calligraphy text-amber-400 glow-gold mb-1 drop-shadow-lg text-center">✍️ 默寫總結與校對版面</h2>
-            <p class="text-xs text-amber-100 mb-6 font-bold tracking-widest drop-shadow-md text-center">DICTATION REVIEW & ERROR CORRECTION (小學中文老師嚴格批改)</p>
+            <p class="text-xs text-amber-100 mb-6 font-bold tracking-widest drop-shadow-md text-center">DICTATION REVIEW & ERROR CORRECTION (香港小學中文老師嚴格批改)</p>
 
             <div id="reviewGrid" class="w-full flex flex-wrap justify-center gap-6 pb-6">
                 <!-- Review cards injected dynamically -->
             </div>
 
-            <div class="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <div class="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-6">
                 <button id="reviewRetryAllBtn" class="py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm shadow-xl transition active:scale-95">全部重新默寫</button>
                 <button id="reviewRetryErrorsBtn" class="py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-xl transition active:scale-95 border border-red-400/50">專注改正錯字 (<span id="wrongWordCount">0</span>)</button>
                 <button id="reviewHomeBtn" class="py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-200 font-bold text-sm shadow-xl border border-slate-600 transition active:scale-95">返回主選單</button>
@@ -373,7 +399,7 @@
         </div>
     </div>
 
-    <!-- 暫停選單 -->
+    <!-- 暫停 Modal -->
     <div id="pauseModal" class="hidden absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div class="ink-card p-6 rounded-3xl max-w-sm w-full text-center flex flex-col gap-3 shadow-2xl border-amber-500">
             <h3 class="text-2xl font-calligraphy text-amber-400 glow-gold mb-2">⏸️ 戰局暫停</h3>
@@ -383,6 +409,7 @@
         </div>
     </div>
 
+    <!-- 結束畫面 -->
     <div id="gameOverModal" class="hidden absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
         <div class="ink-card p-8 rounded-3xl max-w-md w-full text-center border-amber-500 shadow-2xl">
             <h2 id="gameOverTitle" class="text-4xl font-calligraphy text-amber-400 glow-gold mb-2">水 鄉 大 捷</h2>
@@ -400,7 +427,7 @@
         </div>
     </div>
 
-    <!-- 存檔/讀檔 -->
+    <!-- 存檔/載入 Modal -->
     <div id="saveModal" class="hidden absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div class="ink-card p-6 rounded-3xl max-w-md w-full text-center">
             <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
@@ -409,7 +436,7 @@
             </div>
             <div class="space-y-3 text-left">
                 <span class="text-xs text-amber-400 font-bold">存檔名稱:</span>
-                <input type="text" id="saveSlotNameInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-amber-200" placeholder="例如：第一單元默書">
+                <input type="text" id="saveSlotNameInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-amber-200" placeholder="例如：第一單元默書單字">
                 <div class="grid grid-cols-3 gap-2 pt-2">
                     <button type="button" onclick="saveToSlot(1)" class="py-2 bg-slate-800 border border-emerald-500/50 rounded-lg text-emerald-300 text-xs">存檔槽 1</button>
                     <button type="button" onclick="saveToSlot(2)" class="py-2 bg-slate-800 border border-emerald-500/50 rounded-lg text-emerald-300 text-xs">存檔槽 2</button>
@@ -430,8 +457,54 @@
     </div>
 
     <script>
+        // Local HK Primary School Offline Jyutping Database
+        const hkJyutpingDict = {
+            '學': 'hok6', '校': 'haau6', '老': 'lou5', '師': 'si1', '同': 'tung4', '朋': 'pang4', '友': 'jau5', '早': 'zou2',
+            '晨': 'san4', '快': 'faai3', '樂': 'lok6', '讀': 'duk6', '書': 'syu1', '寫': 'se2', '字': 'zi6', '一': 'jat1',
+            '心': 'sam1', '意': 'ji3', '馬': 'maa5', '虎': 'fu2', '春': 'ceun1', '夏': 'haa6', '秋': 'cau1', '冬': 'dung1',
+            '天': 'tin1', '地': 'dei6', '人': 'jan4', '山': 'saan1', '水': 'seui2', '草': 'cou2', '木': 'muk6', '花': 'faa1',
+            '鳥': 'niu5', '日': 'jat6', '月': 'jyut6', '爸': 'baa1', '媽': 'maa1', '哥': 'go1', '弟': 'dai6', '妹': 'mui6',
+            '姐': 'ze2', '大': 'daai6', '小': 'siu2', '多': 'do1', '少': 'siu2', '上': 'soeng5', '下': 'haa6', '左': 'zo2',
+            '右': 'jau6', '東': 'dung1', '南': 'naam4', '西': 'sai1', '北': 'bak1', '紅': 'hung4', '黃': 'wong4', '藍': 'laam4',
+            '白': 'baak6', '黑': 'hak1', '貓': 'maau1', '狗': 'gau2', '魚': 'jyu4', '蟲': 'cung4', '包': 'baau1', '筆': 'bat1',
+            '尺': 'cek3', '桌': 'coek3', '椅': 'ji2', '門': 'mun4', '窗': 'coeng1', '習': 'zaap6', '勤': 'kan4', '奮': 'fan5',
+            '幫': 'bong1', '助': 'zo6', '遊': 'jau4', '戲': 'hei3', '喜': 'hei2', '歡': 'fun1', '漂': 'piu3', '亮': 'leong6',
+            '溫': 'wan1', '功': 'gung1', '課': 'fo3', '井': 'zeng2', '蛙': 'waa1', '守': 'sau2', '株': 'zyu1', '兔': 'tou3',
+            '孝': 'haau3', '敬': 'ging3', '誠': 'sing4', '實': 'sat6', '禮': 'lai5', '貌': 'maau6', '光': 'gwong1', '明': 'ming4',
+            '暖': 'nyun5', '清': 'cing1', '理': 'lei5', '解': 'gaai2', '故': 'gu3', '事': 'si6', '圖': 'tou4', '美': 'mei5',
+            '麗': 'lai6', '安': 'on1', '靜': 'zing6', '敏': 'man5', '捷': 'zit6', '努': 'nou5', '力': 'lik6', '生': 'saang1',
+            '活': 'wut6', '團': 'tyun4', '結': 'git3', '思': 'si1', '注': 'zyu3', '重': 'zung6', '要': 'jiu3', '時': 'si4',
+            '候': 'hau6', '問': 'man6', '答': 'daap3', '應': 'jing3', '閱': 'jyut6', '考': 'haau2', '勇': 'jung5', '敢': 'gam2',
+            '困': 'kwan3', '難': 'naan4', '決': 'kyut3', '合': 'hap6', '作': 'zok3', '精': 'zing1', '彩': 'coi2', '珍': 'zan1',
+            '惜': 'sik1', '畫': 'waa2', '蛇': 'se4', '添': 'tim1', '足': 'zuk1', '亡': 'mong4', '羊': 'joeng4', '牢': 'lou4',
+            '掩': 'jim2', '耳': 'ji5', '鈴': 'ling4', '半': 'bun3', '途': 'tou4', '廢': 'fai3', '創': 'cong3', '造': 'zou6',
+            '偉': 'wai5', '堅': 'gin1', '強': 'koeng4', '潑': 'put3', '鬥': 'dau3', '聰': 'cung1', '才': 'coi4', '華': 'waa4',
+            '優': 'jau1', '秀': 'sau3', '進': 'zeun3', '步': 'bou6', '成': 'sing4', '績': 'zik1', '失': 'sat1', '敗': 'baai6',
+            '希': 'hei1', '望': 'mong6', '研': 'jin4', '究': 'gau3', '科': 'fo1', '技': 'gei6', '術': 'seut6', '環': 'waan4',
+            '保': 'bou2', '護': 'wu6', '健': 'gin6', '體': 'tai2', '育': 'juk6', '音': 'jam1', '觀': 'gun1', '察': 'caat3',
+            '培': 'pui4', '養': 'joeng5', '責': 'zaak3', '任': 'jam6', '態': 'taai3', '度': 'dou6', '尊': 'zyun1', '諒': 'loeng6',
+            '鼓': 'gu2', '勵': 'lai6', '欣': 'jan1', '賞': 'soeng2', '狐': 'wu4', '假': 'gaa2', '威': 'wai1', '拔': 'bat6',
+            '苗': 'miu4', '琴': 'kam4', '百': 'baak3', '發': 'faat3', '德': 'dak1', '智': 'zi3', '群': 'kwan4', '專': 'zyun1',
+            '致': 'zi3', '志': 'zi3', '持': 'ci4', '恒': 'hang4', '滴': 'dik1', '石': 'sek6', '穿': 'cyun1', '謙': 'him1',
+            '虛': 'heoi1', '驕': 'giu1', '傲': 'ngou6', '勞': 'lou4', '積': 'zik1', '極': 'gik6', '氣': 'hei3', '信': 'seun3',
+            '念': 'nim6', '標': 'biu1', '計': 'gai3', '劃': 'waak6', '動': 'dung6', '繁': 'faan4', '榮': 'wing4', '貢': 'gung3',
+            '獻': 'hin3', '影': 'jing2', '響': 'hoeng2', '展': 'zin2', '挑': 'tiu1', '戰': 'zin3', '機': 'gei1', '會': 'wui6',
+            '掌': 'zoeng2', '握': 'aak1', '刻': 'hak1', '舟': 'zau1', '求': 'kau4', '劍': 'gim3', '破': 'po3', '釜': 'fu2',
+            '沉': 'cam4', '龍': 'lung4', '得': 'dak1', '形': 'jing4', '犧': 'hei1', '牲': 'saang1', '奉': 'fung6', '邏': 'lo4',
+            '輯': 'cap1', '嚴': 'jim4', '格': 'gaak3', '判': 'pun3', '斷': 'dyun6', '基': 'gei1', '礎': 'co2', '適': 'sik1',
+            '轉': 'zyun2', '變': 'bin3', '迎': 'jing4', '接': 'zip1', '愛': 'oi3', '互': 'wu6', '關': 'gwaan1', '懷': 'waai4',
+            '社': 'se5', '國': 'gwok3', '家': 'gaa1', '世': 'sai3', '界': 'gaai3', '和': 'wo4', '平': 'ping4', '文': 'man4',
+            '歷': 'lik6', '統': 'tung2', '慧': 'wai6', '畢': 'bat1', '業': 'jip6', '獨': 'duk6', '立': 'laap6', '裝': 'zong1',
+            '備': 'bei6', '熟': 'suk6', '巧': 'haau2', '撓': 'naau4', '躊': 'cau4', '躇': 'cyu4', '猶': 'jau4', '豫': 'jyu6',
+            '韌': 'jan6', '卓': 'coek3', '越': 'jyut6', '睿': 'jeoi6', '宏': 'wang4', '遠': 'jyun5', '前': 'cin4', '程': 'cing4',
+            '錦': 'gam2', '具': 'geoi6', '匠': 'zoeng6', '承': 'sing4', '擔': 'daam1', '使': 'si3', '命': 'ming6', '識': 'sik1',
+            '博': 'bok3', '益': 'jik1', '厲': 'lai6', '臨': 'lam4', '渴': 'hot3', '掘': 'gwat6', '班': 'baan1', '弄': 'lung6',
+            '斧': 'fu2', '懸': 'jyun4', '樑': 'loeng4', '刺': 'ci3', '股': 'gu2'
+        };
+
         let gameState = 'START';
-        
+        let speechWarmedUp = false;
+
         window.saveToSlot = function(slotNumber) {
             const customTitle = document.getElementById('saveSlotNameInput').value.trim();
             if (window.saveCloudDataToSlot) {
@@ -464,7 +537,7 @@
                     btn.onclick = () => {
                         document.getElementById('parentCustomInput').value = slotData.words;
                         document.getElementById('loadModal').classList.add('hidden');
-                        if (window.showToast) window.showToast(`✅ 已載入「${slotData.title || '存檔槽 ' + slotNum}」詞庫！`);
+                        if (window.showToast) window.showToast(`✅ 已載入「${slotData.title || '存檔槽 ' + slotNum}」字庫！`);
                     };
                 } else {
                     btn.innerHTML = `<span class="text-gray-500 text-sm">存檔槽 ${slotNum} (空)</span>`;
@@ -479,7 +552,7 @@
         let score = 0;
         let combo = 0;
         let maxCombo = 0;
-        let isGuidedMode = true;
+        let currentLearningMode = 'GUIDED'; // 'GUIDED', 'COPYBOOK', 'QUIZ'
         let isRandomOrder = false;
 
         let isDrawing = false;
@@ -493,14 +566,13 @@
         let customHeroImageBase64 = null;
         let customEnemyImageBase64 = null;
 
-        // --- 香港小學各年級極豐富海量詞庫 (包含詞語、成語、生字) ---
         const gradeVocabularies = {
-            'P1': { pool: ['學校', '老師', '同學', '朋友', '早晨', '快樂', '讀書', '寫字', '一心一意', '馬馬虎虎', '春', '夏', '秋', '冬', '天', '地', '人', '山', '水', '草', '木', '花', '鳥', '日', '月', '爸爸', '媽媽', '哥哥', '弟弟', '妹妹', '姐姐', '大', '小', '多', '少', '上', '下', '左', '右', '東', '南', '西', '北'] },
-            'P2': { pool: ['學習', '勤奮', '幫助', '遊戲', '喜歡', '漂亮', '溫習', '功課', '井底之蛙', '守株待兔', '孝', '敬', '誠', '實', '禮', '貌', '光', '明', '溫', '暖', '清', '晨', '明', '白', '理', '解', '故', '事', '圖', '書', '美', '麗', '安', '靜', '敏', '捷'] },
-            'P3': { pool: ['閱讀', '思考', '勇敢', '困難', '解決', '合作', '精彩', '珍惜', '畫蛇添足', '亡羊補牢', '掩耳盜鈴', '半途而廢', '創', '造', '偉', '大', '堅', '強', '活', '潑', '努', '力', '奮', '鬥', '聰', '明', '才', '華', '優', '秀', '進', '步', '成', '績'] },
-            'P4': { pool: ['觀察', '培養', '責任', '態度', '尊重', '體諒', '鼓勵', '欣賞', '狐假虎威', '拔苗助長', '對牛彈琴', '百發百中', '德', '智', '體', '群', '美', '健', '康', '進', '步', '專', '心', '致', '志', '持', '之', '以', '恒', '水', '滴', '石', '穿'] },
-            'P5': { pool: ['繁榮', '貢獻', '影響', '發展', '挑戰', '機會', '掌握', '創造', '刻舟求劍', '破釜沉舟', '望子成龍', '得意忘形', '犧', '牲', '奉', '獻', '邏', '輯', '嚴', '格', '理', '智', '判', '斷', '基', '礎', '適', '應', '轉', '變', '迎', '接'] },
-            'P6': { pool: ['畢業', '奮鬥', '獨立', '基礎', '迎接', '轉變', '適應', '裝備', '溫故知新', '熟能生巧', '滴水穿石', '百折不撓', '躊', '躇', '猶', '豫', '堅', '韌', '卓', '越', '睿', '智', '宏', '圖', '遠', '大', '前', '程', '似', '錦', '獨', '具', '匠', '心'] }
+            'P1': { pool: ['學', '校', '老', '師', '同', '朋', '友', '早', '晨', '快', '樂', '讀', '書', '寫', '字', '一', '心', '意', '馬', '虎', '春', '夏', '秋', '冬', '天', '地', '人', '山', '水', '草', '木', '花', '鳥', '日', '月', '爸', '媽', '哥', '弟', '妹', '姐', '大', '小', '多', '少', '上', '下', '左', '右', '東', '南', '西', '北', '紅', '黃', '藍', '白', '黑', '貓', '狗', '魚', '蟲', '包', '筆', '尺', '桌', '椅', '門', '窗'] },
+            'P2': { pool: ['習', '勤', '奮', '幫', '助', '遊', '戲', '喜', '歡', '漂', '亮', '溫', '功', '課', '井', '蛙', '守', '株', '兔', '孝', '敬', '誠', '實', '禮', '貌', '光', '明', '暖', '清', '理', '解', '故', '事', '圖', '美', '麗', '安', '靜', '敏', '捷', '努', '力', '生', '活', '團', '結', '思', '注', '重', '要', '時', '候', '問', '答', '應'] },
+            'P3': { pool: ['閱', '思', '考', '勇', '敢', '困', '難', '解', '決', '合', '作', '精', '彩', '珍', '惜', '畫', '蛇', '添', '足', '亡', '羊', '牢', '掩', '耳', '鈴', '半', '途', '廢', '創', '造', '偉', '堅', '強', '活', '潑', '鬥', '聰', '才', '華', '優', '秀', '進', '步', '成', '績', '功', '失', '敗', '希', '望', '研', '究', '科', '技', '術', '環', '保', '護', '健', '體', '育', '音'] },
+            'P4': { pool: ['觀', '察', '培', '養', '責', '任', '態', '度', '尊', '體', '諒', '鼓', '勵', '欣', '賞', '狐', '假', '虎', '威', '拔', '苗', '助', '長', '對', '牛', '彈', '琴', '百', '發', '中', '德', '智', '群', '美', '專', '致', '志', '持', '恒', '滴', '石', '穿', '謙', '虛', '驕', '傲', '勞', '積', '極', '樂', '氣', '決', '信', '念', '目', '標', '計', '劃', '行', '動'] },
+            'P5': { pool: ['繁', '榮', '貢', '獻', '影', '響', '發', '展', '挑', '戰', '機', '會', '掌', '握', '刻', '舟', '求', '劍', '破', '釜', '沉', '望', '子', '龍', '得', '形', '犧', '牲', '奉', '邏', '輯', '嚴', '格', '判', '斷', '基', '礎', '適', '應', '轉', '變', '迎', '接', '愛', '互', '關', '懷', '社', '國', '家', '世', '界', '和', '平', '文', '歷', '統', '慧'] },
+            'P6': { pool: ['畢', '業', '獨', '立', '裝', '備', '熟', '巧', '撓', '躊', '躇', '猶', '豫', '韌', '卓', '越', '睿', '宏', '圖', '遠', '前', '程', '錦', '具', '匠', '承', '擔', '使', '命', '見', '識', '博', '精', '益', '厲', '強', '量', '臨', '渴', '掘', '井', '班', '門', '弄', '斧', '懸', '樑', '刺', '股'] }
         };
 
         const enemies = [
@@ -523,21 +595,47 @@
             return shuffled.slice(0, count);
         }
 
-        // --- 畫布邏輯 (滑鼠/觸控筆點擊起筆、放開收筆) ---
+        function warmUpSpeech() {
+            if (!speechWarmedUp && 'speechSynthesis' in window) {
+                const u = new SpeechSynthesisUtterance('');
+                u.volume = 0;
+                window.speechSynthesis.speak(u);
+                speechWarmedUp = true;
+            }
+        }
+
+        window.speakCantonese = function(text) {
+            if (!text) return;
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-HK';
+                utterance.rate = 0.88;
+                window.speechSynthesis.speak(utterance);
+            }
+        };
+
         function initDictationCanvas() {
             const canvas = document.getElementById('dictationCanvas');
             if (!canvas) return;
 
-            canvas.width = 250;
-            canvas.height = 250;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = 250 * dpr;
+            canvas.height = 250 * dpr;
+            
             dictationCtx = canvas.getContext('2d', { willReadFrequently: true });
+            dictationCtx.scale(dpr, dpr);
+
             clearDictationCanvas();
 
-            canvas.onpointerdown = startDictationStroke;
-            canvas.onpointermove = drawDictationStroke;
-            canvas.onpointerup = endDictationStroke;
-            canvas.onpointercancel = endDictationStroke;
-            canvas.onpointerout = endDictationStroke;
+            canvas.onpointerdown = null;
+            canvas.onpointermove = null;
+            canvas.onpointerup = null;
+
+            canvas.addEventListener('pointerdown', startDictationStroke, { passive: false });
+            canvas.addEventListener('pointermove', drawDictationStroke, { passive: false });
+            canvas.addEventListener('pointerup', endDictationStroke, { passive: false });
+            canvas.addEventListener('pointercancel', endDictationStroke, { passive: false });
         }
 
         function clearDictationCanvas() {
@@ -547,43 +645,45 @@
             strokeHistory = [];
         }
 
+        function getCanvasCoordinates(e, canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = 250 / rect.width;
+            const scaleY = 250 / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
         function startDictationStroke(e) {
             isDrawing = true;
             const canvas = document.getElementById('dictationCanvas');
-            const rect = canvas.getBoundingClientRect();
-            
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const x = (e.clientX - rect.left) * scaleX;
-            const y = (e.clientY - rect.top) * scaleY;
+            const coords = getCanvasCoordinates(e, canvas);
 
             dictationCtx.strokeStyle = "#38bdf8"; 
-            dictationCtx.lineWidth = 14;
+            dictationCtx.lineWidth = 12;
             dictationCtx.lineCap = "round";
             dictationCtx.lineJoin = "round";
             dictationCtx.beginPath();
-            dictationCtx.moveTo(x, y);
+            dictationCtx.moveTo(coords.x, coords.y);
 
-            strokeHistory.push([{ x, y }]);
-            if(e.cancelable) e.preventDefault();
+            strokeHistory.push([{ x: coords.x, y: coords.y }]);
+            if (e.cancelable) e.preventDefault();
         }
 
         function drawDictationStroke(e) {
             if (!isDrawing || !dictationCtx) return;
             const canvas = document.getElementById('dictationCanvas');
-            const rect = canvas.getBoundingClientRect();
-            
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const x = (e.clientX - rect.left) * scaleX;
-            const y = (e.clientY - rect.top) * scaleY;
+            const coords = getCanvasCoordinates(e, canvas);
 
-            dictationCtx.lineTo(x, y);
+            dictationCtx.lineTo(coords.x, coords.y);
             dictationCtx.stroke();
 
             const currentStroke = strokeHistory[strokeHistory.length - 1];
-            currentStroke.push({ x, y });
-            if(e.cancelable) e.preventDefault();
+            if (currentStroke) {
+                currentStroke.push({ x: coords.x, y: coords.y });
+            }
+            if (e.cancelable) e.preventDefault();
         }
 
         function endDictationStroke(e) {
@@ -593,16 +693,26 @@
         function initHanziWriter(char) {
             const writerTarget = document.getElementById('hanziWriterTarget');
             const dictationCanvas = document.getElementById('dictationCanvas');
+            const copybookRefBox = document.getElementById('copybookReferenceBox');
+            const copybookRefChar = document.getElementById('copybookRefChar');
+            const loadingSpinner = document.getElementById('charLoadingSpinner');
             
             if (!writerTarget) return;
             writerTarget.innerHTML = '';
             clearDictationCanvas();
 
-            // 每次載入新字時自動發音 (支援所有模式)
+            // Local Jyutping fetch
+            const localJp = hkJyutpingDict[char] || '---';
+            document.getElementById('jyutpingText').textContent = localJp;
+
+            // Auto Cantonese Speech
             speakCantonese(char);
 
-            if (isGuidedMode) {
+            loadingSpinner.classList.remove('hidden');
+
+            if (currentLearningMode === 'GUIDED') {
                 dictationCanvas.classList.add('hidden');
+                copybookRefBox.classList.add('hidden');
                 document.getElementById('eraserBtn').classList.add('hidden');
                 document.getElementById('submitQuizBtn').classList.add('hidden');
                 document.getElementById('animateBtn').classList.remove('hidden');
@@ -616,8 +726,12 @@
                     strokeColor: '#f59e0b',
                     outlineColor: 'rgba(245, 158, 11, 0.25)',
                     drawingColor: '#38bdf8',
-                    strokeTolerance: 0.2,
-                    showHintAfterMisses: 1
+                    strokeTolerance: 0.25,
+                    onLoadCharDataSuccess: () => loadingSpinner.classList.add('hidden'),
+                    onLoadCharDataError: () => {
+                        loadingSpinner.classList.add('hidden');
+                        window.showToast("⚠️ 字形數據載入失敗，請檢察網絡");
+                    }
                 });
 
                 writer.quiz({
@@ -627,7 +741,7 @@
                         window.showToast("⚠️ 筆順錯誤，請留意正確筆順！");
                         if (hp <= 0) endGame(false);
                     },
-                    onCorrectStroke: function(strokeData) {
+                    onCorrectStroke: function() {
                         combo++;
                         maxCombo = Math.max(maxCombo, combo);
                         score += 50 * combo;
@@ -641,21 +755,47 @@
                         });
                     }
                 });
-            } else {
+            } else if (currentLearningMode === 'COPYBOOK') {
                 dictationCanvas.classList.remove('hidden');
+                copybookRefBox.classList.remove('hidden');
+                copybookRefChar.textContent = char;
+
                 document.getElementById('eraserBtn').classList.remove('hidden');
                 document.getElementById('animateBtn').classList.add('hidden');
                 
                 const submitBtn = document.getElementById('submitQuizBtn');
                 submitBtn.classList.remove('hidden');
-                submitBtn.innerHTML = currentWordIndex === wordBank.length - 1 ? "<span>交卷完成 ✅</span>" : "<span>下一字 ➡️</span>";
+                submitBtn.innerHTML = currentWordIndex === wordBank.length - 1 ? "<span>交卷完成 ✅</span>" : "<span>揮刀 (下一字) ➡️</span>";
+
+                document.getElementById('targetCharTitle').textContent = char;
+                initDictationCanvas();
+
+                writer = HanziWriter.create('hanziWriterTarget', char, {
+                    width: 250, height: 250, padding: 8,
+                    showOutline: false, showCharacter: false, drawingColor: 'rgba(0,0,0,0)',
+                    onLoadCharDataSuccess: () => loadingSpinner.classList.add('hidden'),
+                    onLoadCharDataError: () => loadingSpinner.classList.add('hidden')
+                });
+            } else {
+                // QUIZ Mode
+                dictationCanvas.classList.remove('hidden');
+                copybookRefBox.classList.add('hidden');
+
+                document.getElementById('eraserBtn').classList.remove('hidden');
+                document.getElementById('animateBtn').classList.add('hidden');
+                
+                const submitBtn = document.getElementById('submitQuizBtn');
+                submitBtn.classList.remove('hidden');
+                submitBtn.innerHTML = currentWordIndex === wordBank.length - 1 ? "<span>交卷完成 ✅</span>" : "<span>揮刀 (下一字) ➡️</span>";
 
                 document.getElementById('targetCharTitle').textContent = "？";
                 initDictationCanvas();
 
                 writer = HanziWriter.create('hanziWriterTarget', char, {
                     width: 250, height: 250, padding: 8,
-                    showOutline: false, showCharacter: false, drawingColor: 'rgba(0,0,0,0)'
+                    showOutline: false, showCharacter: false, drawingColor: 'rgba(0,0,0,0)',
+                    onLoadCharDataSuccess: () => loadingSpinner.classList.add('hidden'),
+                    onLoadCharDataError: () => loadingSpinner.classList.add('hidden')
                 });
             }
 
@@ -695,10 +835,9 @@
             }, 700);
         }
 
-        // --- 小學中文老師級別：絕對嚴格審查標準 (只分寫對/寫錯) ---
         async function evaluateDictation() {
             if (strokeHistory.length === 0) {
-                window.showToast("⚠️ 請先寫字！");
+                window.showToast("⚠️ 請先寫字再交卷！");
                 return;
             }
 
@@ -710,61 +849,73 @@
                 const charData = await HanziWriter.loadCharacterData(currentChar);
                 expectedStrokes = charData.strokes.length;
             } catch(e) {
-                console.warn("Could not load character data.");
+                console.warn("Could not load char data for stroke verification");
             }
 
             let isPass = false;
             let failReason = "";
-            
-            if (expectedStrokes > 0) {
-                // 嚴格中文老師標準：筆劃數必須完全一致（只容許 0 誤差，連筆或少筆一律不接受）
-                const strokeDiff = Math.abs(userStrokes - expectedStrokes);
-                if (strokeDiff !== 0) {
+
+            let minX = 999, maxX = 0, minY = 999, maxY = 0;
+            let totalDistance = 0;
+
+            strokeHistory.forEach(stroke => {
+                for (let i = 0; i < stroke.length; i++) {
+                    let pt = stroke[i];
+                    minX = Math.min(minX, pt.x);
+                    maxX = Math.max(maxX, pt.x);
+                    minY = Math.min(minY, pt.y);
+                    maxY = Math.max(maxY, pt.y);
+                    if (i > 0) {
+                        totalDistance += Math.hypot(pt.x - stroke[i-1].x, pt.y - stroke[i-1].y);
+                    }
+                }
+            });
+
+            const spanX = maxX - minX;
+            const spanY = maxY - minY;
+
+            if (currentLearningMode === 'COPYBOOK') {
+                // Copybook mode: Encouraging validation for practice
+                if (totalDistance < 30 || spanX < 20 || spanY < 20) {
                     isPass = false;
-                    failReason = `筆劃數錯誤 (標準${expectedStrkes || expectedStrokes}劃，你寫了${userStrokes}劃)`;
+                    failReason = "筆劃太少或未開始書寫";
                 } else {
-                    let minX = 999, maxX = 0, minY = 999, maxY = 0;
-                    let totalDistance = 0;
-                    
-                    strokeHistory.forEach(stroke => {
-                        for (let i = 0; i < stroke.length; i++) {
-                            let pt = stroke[i];
-                            minX = Math.min(minX, pt.x);
-                            maxX = Math.max(maxX, pt.x);
-                            minY = Math.min(minY, pt.y);
-                            maxY = Math.max(maxY, pt.y);
-                            if (i > 0) {
-                                totalDistance += Math.hypot(pt.x - stroke[i-1].x, pt.y - stroke[i-1].y);
-                            }
-                        }
-                    });
+                    isPass = true;
+                }
+            } else {
+                // QUIZ Mode: Primary School Teacher Standard Evaluation
+                if (expectedStrokes > 0) {
+                    const diff = Math.abs(userStrokes - expectedStrokes);
+                    // Tolerances based on character complexity
+                    const allowedDiff = expectedStrokes <= 3 ? 0 : (expectedStrokes <= 8 ? 1 : 2);
 
-                    const spanX = maxX - minX;
-                    const spanY = maxY - minY;
-
-                    if (totalDistance < expectedStrokes * 25 || spanX < 45 || spanY < 45) {
+                    if (diff > allowedDiff) {
                         isPass = false;
-                        failReason = "筆跡太草率或結構不完整";
+                        failReason = `筆劃數不符 (應為${expectedStrokes}劃，你寫了${userStrokes}劃)`;
+                    } else if (totalDistance < expectedStrokes * 18 || spanX < 35 || spanY < 35) {
+                        isPass = false;
+                        failReason = "筆跡過小或結構不完整";
                     } else {
                         isPass = true;
                     }
+                } else {
+                    isPass = userStrokes >= 1 && totalDistance > 50;
                 }
-            } else {
-                isPass = userStrokes >= 2;
-                if (!isPass) failReason = "筆劃過少";
             }
 
-            // 產生清晰的手寫筆跡預覽圖
+            // High contrast snapshot for review modal
             const offscreenCanvas = document.createElement('canvas');
-            offscreenCanvas.width = 250;
-            offscreenCanvas.height = 250;
+            const dpr = window.devicePixelRatio || 1;
+            offscreenCanvas.width = 250 * dpr;
+            offscreenCanvas.height = 250 * dpr;
             const ctx = offscreenCanvas.getContext('2d');
+            ctx.scale(dpr, dpr);
             
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#0f172a';
             ctx.fillRect(0, 0, 250, 250);
 
-            ctx.strokeStyle = '#0284c7';
-            ctx.lineWidth = 14;
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 10;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
 
@@ -821,8 +972,8 @@
                 card.className = "bg-slate-900/95 border border-slate-700 rounded-3xl p-5 flex flex-col items-center shadow-2xl w-[280px] backdrop-blur-md";
                 
                 const statusBadge = item.pass 
-                    ? `<span class="px-3 py-2 rounded-lg bg-emerald-900 text-emerald-300 text-sm font-bold border border-emerald-500 shadow-lg w-full text-center tracking-wider flex flex-col justify-center h-[52px]">✔ 寫對 (PASS)</span>`
-                    : `<span class="px-3 py-1.5 rounded-lg bg-red-950 text-red-300 text-[11px] font-bold border border-red-500 shadow-lg w-full text-center tracking-wider flex flex-col justify-center h-[52px] leading-tight"><span class="text-xs mb-0.5 font-bold">✖ 寫錯 (FAIL)</span><span class="text-red-400 font-normal text-[10px] truncate">${item.reason || '結構不符'}</span></span>`;
+                    ? `<span class="px-3 py-2 rounded-lg bg-emerald-900 text-emerald-300 text-sm font-bold border border-emerald-500 shadow-lg w-full text-center tracking-wider flex flex-col justify-center h-[56px]">✔ 寫對 (PASS)</span>`
+                    : `<span class="px-2 py-1.5 rounded-lg bg-red-950 text-red-300 text-[11px] font-bold border border-red-500 shadow-lg w-full text-center tracking-wider flex flex-col justify-center h-[56px] leading-tight"><span class="text-xs mb-0.5 font-bold">✖ 寫錯 (FAIL)</span><span class="text-red-400 font-normal text-[10px] truncate">${item.reason || '結構不符'}</span></span>`;
 
                 card.innerHTML = `
                     <div class="flex justify-between items-center w-full mb-3 px-1">
@@ -837,7 +988,7 @@
                         </div>
                         <div class="flex flex-col items-center">
                             <span class="text-[11px] text-cyan-400 font-bold mb-1 whitespace-nowrap">你的手寫 (${item.actual}劃)</span>
-                            <div class="w-[100px] h-[100px] bg-white rounded-xl border-2 border-cyan-500 overflow-hidden shadow-inner flex items-center justify-center">
+                            <div class="w-[100px] h-[100px] bg-slate-950 rounded-xl border-2 border-cyan-500 overflow-hidden shadow-inner flex items-center justify-center">
                                 <img src="${item.userCanvasDataUrl}" class="w-full h-full object-cover">
                             </div>
                         </div>
@@ -854,26 +1005,6 @@
 
             document.getElementById('dictationReviewModal').classList.remove('hidden');
         }
-
-        async function getJyutping(char) {
-            try {
-                const res = await fetch(`https://words.hk/api/v1/words/?q=${encodeURIComponent(char)}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data && data.length > 0 && data[0].jyutping) return data[0].jyutping;
-                }
-            } catch (e) { console.log(e); }
-            return "---";
-        }
-
-        window.speakCantonese = function(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'zh-HK';
-                window.speechSynthesis.speak(utterance);
-            }
-        };
 
         function endGame(isWin) {
             document.getElementById('pauseGameBtn').classList.add('hidden');
@@ -899,23 +1030,54 @@
         function loadCurrentCharacter() {
             const char = wordBank[currentWordIndex];
             document.getElementById('wordIndexTag').textContent = `目標 ${currentWordIndex + 1} / ${wordBank.length}`;
-            getJyutping(char).then(jp => document.getElementById('jyutpingText').textContent = jp);
             initHanziWriter(char);
         }
 
+        // Image optimization helper (canvas resize & compress)
+        function compressImage(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const maxDim = 300;
+                    let w = img.width, h = img.height;
+                    if (w > h) {
+                        if (w > maxDim) { h *= maxDim / w; w = maxDim; }
+                    } else {
+                        if (h > maxDim) { w *= maxDim / h; h = maxDim; }
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    callback(canvas.toDataURL('image/jpeg', 0.8));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
+            const dismissKeyboard = () => {
+                if (document.activeElement && document.activeElement.blur) {
+                    document.activeElement.blur();
+                }
+            };
+
             const guidedBtn = document.getElementById('startModeGuidedBtn');
+            const copybookBtn = document.getElementById('startModeCopybookBtn');
             const quizBtn = document.getElementById('startModeQuizBtn');
-            guidedBtn.onclick = () => {
-                isGuidedMode = true;
-                guidedBtn.className = "px-2.5 py-1 rounded text-xs font-bold bg-amber-500 text-black shadow";
-                quizBtn.className = "px-2.5 py-1 rounded text-xs font-bold bg-slate-700 text-gray-300 border border-slate-600 hover:text-amber-200";
-            };
-            quizBtn.onclick = () => {
-                isGuidedMode = false;
-                quizBtn.className = "px-2.5 py-1 rounded text-xs font-bold bg-amber-500 text-black shadow";
-                guidedBtn.className = "px-2.5 py-1 rounded text-xs font-bold bg-slate-700 text-gray-300 border border-slate-600 hover:text-amber-200";
-            };
+
+            function updateModeUI() {
+                guidedBtn.className = currentLearningMode === 'GUIDED' ? "px-2 py-1.5 rounded text-[11px] font-bold bg-amber-500 text-black shadow text-center" : "px-2 py-1.5 rounded text-[11px] font-bold bg-slate-700 text-gray-300 border border-slate-600 hover:text-amber-200 text-center";
+                copybookBtn.className = currentLearningMode === 'COPYBOOK' ? "px-2 py-1.5 rounded text-[11px] font-bold bg-amber-500 text-black shadow text-center" : "px-2 py-1.5 rounded text-[11px] font-bold bg-slate-700 text-gray-300 border border-slate-600 hover:text-amber-200 text-center";
+                quizBtn.className = currentLearningMode === 'QUIZ' ? "px-2 py-1.5 rounded text-[11px] font-bold bg-amber-500 text-black shadow text-center" : "px-2 py-1.5 rounded text-[11px] font-bold bg-slate-700 text-gray-300 border border-slate-600 hover:text-amber-200 text-center";
+            }
+
+            guidedBtn.onclick = () => { currentLearningMode = 'GUIDED'; updateModeUI(); };
+            copybookBtn.onclick = () => { currentLearningMode = 'COPYBOOK'; updateModeUI(); };
+            quizBtn.onclick = () => { currentLearningMode = 'QUIZ'; updateModeUI(); };
 
             const seqBtn = document.getElementById('orderSequentialBtn');
             const randBtn = document.getElementById('orderRandomBtn');
@@ -930,14 +1092,14 @@
                 seqBtn.className = "px-2.5 py-1 rounded text-xs font-bold bg-slate-700 text-gray-300 border border-slate-600 hover:text-amber-200";
             };
 
-            let activeGradeKey = null;
             const gradeBtns = document.querySelectorAll('.grade-btn');
             gradeBtns.forEach(btn => {
                 btn.onclick = (e) => {
-                    activeGradeKey = e.currentTarget.getAttribute('data-grade');
+                    dismissKeyboard();
+                    const activeGradeKey = e.currentTarget.getAttribute('data-grade');
                     const vocab = gradeVocabularies[activeGradeKey];
                     if (vocab) {
-                        const sampleWords = getRandomWordsFromPool(vocab.pool, 10);
+                        const sampleWords = getRandomWordsFromPool(vocab.pool, 15);
                         document.getElementById('parentCustomInput').value = sampleWords.join(' ');
                         gradeBtns.forEach(b => b.className = "grade-btn px-1 py-1 rounded bg-slate-700 text-gray-300 text-[11px] font-bold border border-slate-600 hover:border-amber-400 hover:text-amber-300 transition text-center leading-tight");
                         e.currentTarget.className = "grade-btn px-1 py-1 rounded bg-amber-500 text-black text-[11px] font-bold transition text-center leading-tight";
@@ -946,22 +1108,21 @@
             });
 
             document.getElementById('presetBtn').onclick = () => {
+                dismissKeyboard();
                 document.getElementById('parentCustomInput').value = "學 習 努 力 香 港";
             };
 
             ['heroPhotoInput', 'modalHeroPhotoInput'].forEach(id => {
                 const el = document.getElementById(id);
-                if(el) {
+                if (el) {
                     el.addEventListener('change', (e) => {
                         const file = e.target.files[0];
                         if (file) {
-                            const reader = new FileReader();
-                            reader.onload = evt => {
-                                customHeroImageBase64 = evt.target.result;
+                            compressImage(file, (dataUrl) => {
+                                customHeroImageBase64 = dataUrl;
                                 document.getElementById('heroImgEl').src = customHeroImageBase64;
                                 document.getElementById('resetHeroPhotoBtn').classList.remove('hidden');
-                            };
-                            reader.readAsDataURL(file);
+                            });
                         }
                     });
                 }
@@ -969,17 +1130,15 @@
 
             ['enemyPhotoInput', 'modalEnemyPhotoInput'].forEach(id => {
                 const el = document.getElementById(id);
-                if(el) {
+                if (el) {
                     el.addEventListener('change', (e) => {
                         const file = e.target.files[0];
                         if (file) {
-                            const reader = new FileReader();
-                            reader.onload = evt => {
-                                customEnemyImageBase64 = evt.target.result;
+                            compressImage(file, (dataUrl) => {
+                                customEnemyImageBase64 = dataUrl;
                                 updateEnemyUI();
                                 document.getElementById('resetEnemyPhotoBtn').classList.remove('hidden');
-                            };
-                            reader.readAsDataURL(file);
+                            });
                         }
                     });
                 }
@@ -988,9 +1147,14 @@
             document.getElementById('animateBtn').onclick = () => writer?.animateCharacter();
             document.getElementById('eraserBtn').onclick = () => clearDictationCanvas();
             document.getElementById('submitQuizBtn').onclick = () => evaluateDictation();
-            document.getElementById('speakBtn').onclick = () => speakCantonese(wordBank[currentWordIndex]);
+            document.getElementById('speakBtn').onclick = () => {
+                warmUpSpeech();
+                speakCantonese(wordBank[currentWordIndex]);
+            };
 
             document.getElementById('startGameBtn').onclick = () => {
+                warmUpSpeech();
+                dismissKeyboard();
                 const val = document.getElementById('parentCustomInput').value.trim();
                 if (val) {
                     originalWordBank = val.replace(/[^\u4e00-\u9fa5]/g, '').split('');
@@ -1028,7 +1192,7 @@
 
             document.getElementById('pauseGameBtn').onclick = () => {
                 document.getElementById('pauseModal').classList.remove('hidden');
-                if (!isGuidedMode) document.getElementById('pauseSurrenderBtn').classList.remove('hidden');
+                if (currentLearningMode !== 'GUIDED') document.getElementById('pauseSurrenderBtn').classList.remove('hidden');
             };
             document.getElementById('pauseResumeBtn').onclick = () => document.getElementById('pauseModal').classList.add('hidden');
             document.getElementById('pauseHomeBtn').onclick = () => {
@@ -1044,8 +1208,7 @@
             document.getElementById('openSaveModalBtn').onclick = () => document.getElementById('saveModal').classList.remove('hidden');
             document.getElementById('closeSaveModalBtn').onclick = () => document.getElementById('saveModal').classList.add('hidden');
             document.getElementById('openLoadModalBtn').onclick = () => {
-                if(window.renderSaveSlotsList) window.renderSaveSlotsList();
-                document.getElementById('loadModal').classList.add('hidden'); // Fixed syntax
+                if (window.renderSaveSlotsList) window.renderSaveSlotsList();
                 document.getElementById('loadModal').classList.remove('hidden');
             };
             document.getElementById('closeLoadModalBtn').onclick = () => document.getElementById('loadModal').classList.add('hidden');
