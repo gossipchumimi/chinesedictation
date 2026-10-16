@@ -230,7 +230,7 @@
             </div>
 
             <div id="canvasFrame" class="relative rounded-3xl p-3 bg-slate-900 border-4 border-amber-500 shadow-2xl flex flex-col items-center">
-                <div id="canvasContainer" class="relative flex items-center justify-center" style="width: 320px; height: 320px;">
+                <div id="canvasContainer" class="relative flex items-center justify-center" style="width: 380px; height: 380px;">
                     <div id="gridOverlay" class="absolute inset-0 rounded-xl border-2 border-red-500/50 pointer-events-none grid grid-cols-3 grid-rows-3 z-10">
                         <div class="border-r border-b border-red-500/30"></div>
                         <div class="border-r border-b border-red-500/30"></div>
@@ -244,10 +244,10 @@
                     </div>
 
                     <!-- HanziWriter 底層 SVG 畫布 (描紅模式使用) -->
-                    <div id="hanziWriterTarget" class="absolute inset-0 bg-transparent rounded-xl overflow-hidden cursor-crosshair z-0" style="width: 320px; height: 320px;"></div>
+                    <div id="hanziWriterTarget" class="absolute inset-0 bg-transparent rounded-xl overflow-hidden cursor-crosshair z-0" style="width: 380px; height: 380px;"></div>
                     
                     <!-- HTML5 自由繪圖畫布 (謄文與默寫模式使用) -->
-                    <canvas id="dictationCanvas" class="absolute inset-0 rounded-xl z-20 cursor-crosshair hidden" style="width: 320px; height: 320px; touch-action: none;"></canvas>
+                    <canvas id="dictationCanvas" class="absolute inset-0 rounded-xl z-20 cursor-crosshair hidden" style="width: 380px; height: 380px; touch-action: none;"></canvas>
 
                     <!-- Loading Indicator Overlay -->
                     <div id="charLoadingSpinner" class="hidden absolute inset-0 z-30 bg-slate-900/80 rounded-xl flex items-center justify-center space-x-2 backdrop-blur-sm">
@@ -623,8 +623,8 @@
             if (!canvas) return;
 
             const dpr = window.devicePixelRatio || 1;
-            canvas.width = 320 * dpr;
-            canvas.height = 320 * dpr;
+            canvas.width = 380 * dpr;
+            canvas.height = 380 * dpr;
             
             dictationCtx = canvas.getContext('2d', { willReadFrequently: true });
             dictationCtx.scale(dpr, dpr);
@@ -643,7 +643,7 @@
 
         function clearDictationCanvas() {
             if (dictationCtx) {
-                dictationCtx.clearRect(0, 0, 320, 320);
+                dictationCtx.clearRect(0, 0, 380, 380);
             }
             strokeHistory = [];
         }
@@ -651,20 +651,13 @@
         function getCanvasCoordinates(e, canvas) {
             const rect = canvas.getBoundingClientRect();
 
-            // iOS Safari visualViewport 修正（避免地址欄/縮放造成偏移）
-            const vv = window.visualViewport;
-            const offsetLeft = vv ? vv.offsetLeft : 0;
-            const offsetTop = vv ? vv.offsetTop : 0;
-
-            const clientX = e.clientX;
-            const clientY = e.clientY;
-
-            const x = ((clientX - rect.left - offsetLeft) / rect.width) * 320;
-            const y = ((clientY - rect.top - offsetTop) / rect.height) * 320;
+            // 直接對應視覺位置（已包含所有 CSS transform）
+            const x = ((e.clientX - rect.left) / rect.width) * 380;
+            const y = ((e.clientY - rect.top) / rect.height) * 380;
 
             return {
-                x: Math.max(0, Math.min(320, x)),
-                y: Math.max(0, Math.min(320, y))
+                x: Math.max(0, Math.min(380, x)),
+                y: Math.max(0, Math.min(380, y))
             };
         }
 
@@ -673,10 +666,16 @@
             const canvas = document.getElementById('dictationCanvas');
             const coords = getCanvasCoordinates(e, canvas);
 
-            dictationCtx.strokeStyle = "#38bdf8"; 
-            dictationCtx.lineWidth = 12;
+            // 毛筆效果：較粗、圓頭、輕微陰影
+            dictationCtx.strokeStyle = "#1e40af";
+            dictationCtx.lineWidth = 18;
             dictationCtx.lineCap = "round";
             dictationCtx.lineJoin = "round";
+            dictationCtx.shadowColor = "rgba(30, 64, 175, 0.45)";
+            dictationCtx.shadowBlur = 6;
+            dictationCtx.shadowOffsetX = 1;
+            dictationCtx.shadowOffsetY = 1;
+
             dictationCtx.beginPath();
             dictationCtx.moveTo(coords.x, coords.y);
 
@@ -733,7 +732,7 @@
                 document.getElementById('targetCharTitle').textContent = char;
 
                 writer = HanziWriter.create('hanziWriterTarget', char, {
-                    width: 320, height: 320, padding: 8,
+                    width: 380, height: 380, padding: 8,
                     showOutline: true, showCharacter: false,
                     strokeAnimationSpeed: 1.5,
                     strokeColor: '#f59e0b',
@@ -784,7 +783,7 @@
                 initDictationCanvas();
 
                 writer = HanziWriter.create('hanziWriterTarget', char, {
-                    width: 320, height: 320, padding: 8,
+                    width: 380, height: 380, padding: 8,
                     showOutline: false, showCharacter: false, drawingColor: 'rgba(0,0,0,0)',
                     onLoadCharDataSuccess: () => loadingSpinner.classList.add('hidden'),
                     onLoadCharDataError: () => loadingSpinner.classList.add('hidden')
@@ -805,7 +804,7 @@
                 initDictationCanvas();
 
                 writer = HanziWriter.create('hanziWriterTarget', char, {
-                    width: 320, height: 320, padding: 8,
+                    width: 380, height: 380, padding: 8,
                     showOutline: false, showCharacter: false, drawingColor: 'rgba(0,0,0,0)',
                     onLoadCharDataSuccess: () => loadingSpinner.classList.add('hidden'),
                     onLoadCharDataError: () => loadingSpinner.classList.add('hidden')
@@ -919,16 +918,16 @@
             // High contrast snapshot for review modal
             const offscreenCanvas = document.createElement('canvas');
             const dpr = window.devicePixelRatio || 1;
-            offscreenCanvas.width = 320 * dpr;
-            offscreenCanvas.height = 320 * dpr;
+            offscreenCanvas.width = 380 * dpr;
+            offscreenCanvas.height = 380 * dpr;
             const ctx = offscreenCanvas.getContext('2d');
             ctx.scale(dpr, dpr);
             
             ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, 0, 320, 320);
+            ctx.fillRect(0, 0, 380, 380);
 
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#1e40af';
+            ctx.lineWidth = 16;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
 
@@ -1083,7 +1082,7 @@
 
                 if (isPortrait && isSmall) {
                     // 估算內容原本高度（三個主要區塊）
-                    const estimatedHeight = 860; // 主角 + 寫字區 + 敵人 + padding
+                    const estimatedHeight = 980; // 主角 + 寫字區 + 敵人 + padding
                     const available = window.innerHeight - 20; // 留少少邊
                     let scale = available / estimatedHeight;
                     if (scale > 1) scale = 1;
