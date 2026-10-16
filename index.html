@@ -154,6 +154,9 @@
         }
 
         #dictationCanvas, #hanziWriterTarget {
+        #gameScene {
+            transition: transform 0.2s ease;
+        }
             touch-action: none !important;
             -webkit-tap-highlight-color: transparent;
         }
@@ -180,7 +183,7 @@
         <i class="fa-solid fa-pause"></i>
     </button>
 
-    <div id="gameScene" class="absolute inset-0 z-10 flex flex-col md:flex-row items-center justify-between md:justify-around px-3 sm:px-6 md:px-10 py-4 sm:py-6 md:py-12 pointer-events-none max-w-[1400px] mx-auto w-full h-full overflow-y-auto md:overflow-hidden gap-3 md:gap-0">
+    <div id="gameScene" class="absolute inset-0 z-10 flex flex-col md:flex-row items-center justify-between md:justify-around px-3 sm:px-6 md:px-10 py-4 sm:py-6 md:py-12 pointer-events-none max-w-[1400px] mx-auto w-full h-full overflow-hidden gap-3 md:gap-0">
         
         <!-- 主角面板 -->
         <div id="heroCard" class="w-full sm:w-[35%] md:w-[26%] max-w-[220px] h-auto md:h-[72%] min-h-[220px] flex flex-col items-center justify-between p-3 character-frame transition-all duration-300 pointer-events-auto shrink-0 mt-2 md:mt-0">
@@ -1059,6 +1062,40 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            // === 方案 B：直向自動縮細，盡量一版睇晒 ===
+            function autoScaleGameScene() {
+                const scene = document.getElementById('gameScene');
+                if (!scene) return;
+
+                // 只在直向 + 窄螢幕先縮（手機）
+                const isPortrait = window.innerHeight > window.innerWidth;
+                const isSmall = window.innerWidth < 768;
+
+                if (isPortrait && isSmall) {
+                    // 估算內容原本高度（三個主要區塊）
+                    const estimatedHeight = 780; // 主角 + 寫字區 + 敵人 + padding
+                    const available = window.innerHeight - 20; // 留少少邊
+                    let scale = available / estimatedHeight;
+                    if (scale > 1) scale = 1;
+                    if (scale < 0.55) scale = 0.55; // 唔好縮太細
+
+                    scene.style.transform = `scale(${scale})`;
+                    scene.style.transformOrigin = 'top center';
+                    scene.style.height = `${estimatedHeight}px`;
+                    scene.style.marginTop = '8px';
+                } else {
+                    // 橫向或大螢幕還原
+                    scene.style.transform = '';
+                    scene.style.transformOrigin = '';
+                    scene.style.height = '';
+                    scene.style.marginTop = '';
+                }
+            }
+
+            autoScaleGameScene();
+            window.addEventListener('resize', autoScaleGameScene);
+            window.addEventListener('orientationchange', () => setTimeout(autoScaleGameScene, 150));
+
             const dismissKeyboard = () => {
                 if (document.activeElement && document.activeElement.blur) {
                     document.activeElement.blur();
