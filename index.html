@@ -154,11 +154,18 @@
         }
 
         #dictationCanvas, #hanziWriterTarget {
-        #gameScene {
-            transition: transform 0.2s ease;
-        }
             touch-action: none !important;
             -webkit-tap-highlight-color: transparent;
+        }
+        #hanziWriterTarget svg path {
+            stroke-width: 18 !important;
+        }
+        #hanziWriterTarget, #hanziWriterTarget svg {
+            touch-action: none !important;
+            -webkit-user-select: none;
+        }
+        #gameScene {
+            transition: transform 0.2s ease;
         }
 
         ::-webkit-scrollbar { width: 6px; }
@@ -183,7 +190,7 @@
         <i class="fa-solid fa-pause"></i>
     </button>
 
-    <div id="gameScene" class="absolute inset-0 z-10 flex flex-col md:flex-row items-center justify-between md:justify-around px-3 sm:px-6 md:px-10 py-4 sm:py-6 md:py-12 pointer-events-none max-w-[1400px] mx-auto w-full h-full overflow-hidden gap-3 md:gap-0">
+    <div id="gameScene" class="absolute inset-0 z-10 flex flex-col md:flex-row items-center justify-between md:justify-around px-3 sm:px-6 md:px-10 py-4 sm:py-6 md:py-12 pointer-events-none max-w-[1400px] mx-auto w-full h-full overflow-y-auto md:overflow-hidden gap-3 md:gap-0">
         
         <!-- 主角面板 -->
         <div id="heroCard" class="w-full sm:w-[35%] md:w-[26%] max-w-[220px] h-auto md:h-[72%] min-h-[220px] flex flex-col items-center justify-between p-3 character-frame transition-all duration-300 pointer-events-auto shrink-0 mt-2 md:mt-0">
@@ -193,7 +200,7 @@
             </label>
             <input type="file" id="heroPhotoInput" accept="image/*" class="hidden">
 
-            <div id="heroImgWrapper" class="relative w-full flex-1 min-h-[45%] flex items-center justify-center overflow-hidden my-2 rounded-xl border-2 border-amber-400/80 bg-slate-900/60 shadow-inner">
+            <div id="heroImgWrapper" class="relative w-full flex-1 min-h-[45%] flex items-center justify-center overflow-y-auto md:overflow-hidden my-2 rounded-xl border-2 border-amber-400/80 bg-slate-900/60 shadow-inner">
                 <img id="heroImgEl" src="https://live.staticflickr.com/65535/55590224936_9b150393c9_z.jpg" alt="鎮守大將" class="w-full h-full object-cover rounded-lg transition-all">
             </div>
 
@@ -208,7 +215,7 @@
         <!-- 寫字區域 -->
         <div id="writingAreaContainer" class="pointer-events-auto flex flex-col items-center z-25 flex-1 mx-0 md:mx-4 w-full scale-95 md:scale-100">
             <div id="charHeaderInfo" class="mb-3 bg-slate-900 border-2 border-amber-500 px-5 py-2 rounded-2xl flex items-center space-x-3 shadow-2xl w-[292px] justify-center">
-                <div class="relative w-14 h-14 bg-slate-800 rounded-xl border-2 border-red-500/80 flex items-center justify-center overflow-hidden shrink-0">
+                <div class="relative w-14 h-14 bg-slate-800 rounded-xl border-2 border-red-500/80 flex items-center justify-center overflow-y-auto md:overflow-hidden shrink-0">
                     <span id="targetCharTitle" class="text-4xl font-calligraphy text-amber-300 glow-gold z-10">學</span>
                 </div>
                 <div class="h-10 w-px bg-slate-700 shrink-0"></div>
@@ -244,7 +251,7 @@
                     </div>
 
                     <!-- HanziWriter 底層 SVG 畫布 (描紅模式使用) -->
-                    <div id="hanziWriterTarget" class="absolute inset-0 bg-transparent rounded-xl overflow-hidden cursor-crosshair z-0" style="width: 380px; height: 380px;"></div>
+                    <div id="hanziWriterTarget" class="absolute inset-0 bg-transparent rounded-xl overflow-y-auto md:overflow-hidden cursor-crosshair z-0" style="width: 380px; height: 380px;"></div>
                     
                     <!-- HTML5 自由繪圖畫布 (謄文與默寫模式使用) -->
                     <canvas id="dictationCanvas" class="absolute inset-0 rounded-xl z-20 cursor-crosshair hidden" style="width: 380px; height: 380px; touch-action: none;"></canvas>
@@ -280,13 +287,13 @@
             </label>
             <input type="file" id="enemyPhotoInput" accept="image/*" class="hidden">
 
-            <div id="enemyImgWrapper" class="relative w-full flex-1 min-h-[42%] flex items-center justify-center overflow-hidden my-2 rounded-xl border-2 border-red-500/80 bg-slate-900/80 shadow-inner">
+            <div id="enemyImgWrapper" class="relative w-full flex-1 min-h-[42%] flex items-center justify-center overflow-y-auto md:overflow-hidden my-2 rounded-xl border-2 border-red-500/80 bg-slate-900/80 shadow-inner">
                 <img id="enemyImgEl" src="" alt="擊退對象" class="w-full h-full object-cover rounded-lg transition-all hidden">
                 <i id="enemyIcon" class="fa-solid fa-skull-crossbones text-5xl text-amber-400 drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]"></i>
             </div>
 
             <div class="w-full text-center flex flex-col items-center">
-                <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-red-800 mb-1.5">
+                <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-y-auto md:overflow-hidden border border-red-800 mb-1.5">
                     <div id="enemyHpBar" class="h-full bg-red-600 w-full transition-all duration-300"></div>
                 </div>
                 <div class="bg-amber-950/90 border border-amber-500 px-3 py-1.5 rounded-full text-center shadow-lg w-full truncate">
@@ -531,7 +538,7 @@
                 
                 if (slotData) {
                     btn.innerHTML = `
-                        <div class="overflow-hidden pr-2">
+                        <div class="overflow-y-auto md:overflow-hidden pr-2">
                             <div class="text-amber-300 font-bold text-sm truncate">${slotData.title || '存檔槽 ' + slotNum}</div>
                             <div class="text-xs text-gray-400 mt-1 truncate">${slotData.words}</div>
                         </div>
@@ -622,9 +629,10 @@
             const canvas = document.getElementById('dictationCanvas');
             if (!canvas) return;
 
+            const size = window.writingSize || 380;
             const dpr = window.devicePixelRatio || 1;
-            canvas.width = 380 * dpr;
-            canvas.height = 380 * dpr;
+            canvas.width = size * dpr;
+            canvas.height = size * dpr;
             
             dictationCtx = canvas.getContext('2d', { willReadFrequently: true });
             dictationCtx.scale(dpr, dpr);
@@ -643,21 +651,28 @@
 
         function clearDictationCanvas() {
             if (dictationCtx) {
-                dictationCtx.clearRect(0, 0, 380, 380);
+                const size = window.writingSize || 380;
+                dictationCtx.clearRect(0, 0, size, size);
             }
             strokeHistory = [];
         }
 
         function getCanvasCoordinates(e, canvas) {
             const rect = canvas.getBoundingClientRect();
+            const size = window.writingSize || 380;
 
-            // 直接對應視覺位置（已包含所有 CSS transform）
-            const x = ((e.clientX - rect.left) / rect.width) * 380;
-            const y = ((e.clientY - rect.top) / rect.height) * 380;
+            let x, y;
+            if (typeof e.offsetX === 'number' && e.offsetX >= 0 && e.offsetX <= rect.width + 2) {
+                x = (e.offsetX / rect.width) * size;
+                y = (e.offsetY / rect.height) * size;
+            } else {
+                x = ((e.clientX - rect.left) / rect.width) * size;
+                y = ((e.clientY - rect.top) / rect.height) * size;
+            }
 
             return {
-                x: Math.max(0, Math.min(380, x)),
-                y: Math.max(0, Math.min(380, y))
+                x: Math.max(0, Math.min(size, x)),
+                y: Math.max(0, Math.min(size, y))
             };
         }
 
@@ -668,7 +683,7 @@
 
             // 毛筆效果：較粗、圓頭、輕微陰影
             dictationCtx.strokeStyle = "#1e40af";
-            dictationCtx.lineWidth = 18;
+            dictationCtx.lineWidth = 32;
             dictationCtx.lineCap = "round";
             dictationCtx.lineJoin = "round";
             dictationCtx.shadowColor = "rgba(30, 64, 175, 0.45)";
@@ -723,6 +738,7 @@
             loadingSpinner.classList.remove('hidden');
 
             if (currentLearningMode === 'GUIDED') {
+                // 練習模式：還原 HanziWriter quiz（有筆順對錯），同時加強觸控對齊
                 dictationCanvas.classList.add('hidden');
                 copybookRefBox.classList.add('hidden');
                 document.getElementById('eraserBtn').classList.add('hidden');
@@ -731,20 +747,56 @@
 
                 document.getElementById('targetCharTitle').textContent = char;
 
+                const size = window.writingSize || 380;
+                const writerTarget = document.getElementById('hanziWriterTarget');
+                writerTarget.style.width = size + 'px';
+                writerTarget.style.height = size + 'px';
+                writerTarget.style.transform = 'none';
+
                 writer = HanziWriter.create('hanziWriterTarget', char, {
-                    width: 380, height: 380, padding: 8,
+                    width: size, height: size, padding: 8,
                     showOutline: true, showCharacter: false,
                     strokeAnimationSpeed: 1.5,
                     strokeColor: '#f59e0b',
-                    outlineColor: 'rgba(245, 158, 11, 0.25)',
+                    outlineColor: 'rgba(245, 158, 11, 0.3)',
                     drawingColor: '#38bdf8',
-                    strokeTolerance: 0.25,
+                    strokeTolerance: 0.3,
                     onLoadCharDataSuccess: () => loadingSpinner.classList.add('hidden'),
                     onLoadCharDataError: () => {
                         loadingSpinner.classList.add('hidden');
                         window.showToast("⚠️ 字形數據載入失敗，請檢察網絡");
                     }
                 });
+
+                // iOS 觸控偏移校正（iPhone 12 實測：偏上+偏左約 5mm ≈ 30px）
+                const target = document.getElementById('hanziWriterTarget');
+                if (target && !target._offsetFixed) {
+                    target._offsetFixed = true;
+                    const OFFSET_X = 30; // 向右補償
+                    const OFFSET_Y = 30; // 向下補償
+
+                    function correctAndRedispatch(e) {
+                        if (e._corrected) return;
+                        e.stopImmediatePropagation();
+                        e.preventDefault();
+
+                        const corrected = new PointerEvent(e.type, {
+                            clientX: e.clientX + OFFSET_X,
+                            clientY: e.clientY + OFFSET_Y,
+                            bubbles: true,
+                            cancelable: true,
+                            pointerId: e.pointerId,
+                            pointerType: e.pointerType,
+                            isPrimary: e.isPrimary
+                        });
+                        corrected._corrected = true;
+                        target.dispatchEvent(corrected);
+                    }
+
+                    target.addEventListener('pointerdown', correctAndRedispatch, true);
+                    target.addEventListener('pointermove', correctAndRedispatch, true);
+                    target.addEventListener('pointerup', correctAndRedispatch, true);
+                }
 
                 writer.quiz({
                     onMistake: function() {
@@ -783,7 +835,7 @@
                 initDictationCanvas();
 
                 writer = HanziWriter.create('hanziWriterTarget', char, {
-                    width: 380, height: 380, padding: 8,
+                    width: (window.writingSize || 380), height: (window.writingSize || 380), padding: 8,
                     showOutline: false, showCharacter: false, drawingColor: 'rgba(0,0,0,0)',
                     onLoadCharDataSuccess: () => loadingSpinner.classList.add('hidden'),
                     onLoadCharDataError: () => loadingSpinner.classList.add('hidden')
@@ -804,7 +856,7 @@
                 initDictationCanvas();
 
                 writer = HanziWriter.create('hanziWriterTarget', char, {
-                    width: 380, height: 380, padding: 8,
+                    width: (window.writingSize || 380), height: (window.writingSize || 380), padding: 8,
                     showOutline: false, showCharacter: false, drawingColor: 'rgba(0,0,0,0)',
                     onLoadCharDataSuccess: () => loadingSpinner.classList.add('hidden'),
                     onLoadCharDataError: () => loadingSpinner.classList.add('hidden')
@@ -918,16 +970,17 @@
             // High contrast snapshot for review modal
             const offscreenCanvas = document.createElement('canvas');
             const dpr = window.devicePixelRatio || 1;
-            offscreenCanvas.width = 380 * dpr;
-            offscreenCanvas.height = 380 * dpr;
+            offscreenCanvas.width = (window.writingSize || 380) * dpr;
+            offscreenCanvas.height = (window.writingSize || 380) * dpr;
             const ctx = offscreenCanvas.getContext('2d');
             ctx.scale(dpr, dpr);
             
             ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, 0, 380, 380);
+            const sz = window.writingSize || 380;
+            ctx.fillRect(0, 0, sz, sz);
 
             ctx.strokeStyle = '#1e40af';
-            ctx.lineWidth = 16;
+            ctx.lineWidth = 32;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
 
@@ -1000,7 +1053,7 @@
                         </div>
                         <div class="flex flex-col items-center">
                             <span class="text-[11px] text-cyan-400 font-bold mb-1 whitespace-nowrap">你的手寫 (${item.actual}劃)</span>
-                            <div class="w-[100px] h-[100px] bg-slate-950 rounded-xl border-2 border-cyan-500 overflow-hidden shadow-inner flex items-center justify-center">
+                            <div class="w-[100px] h-[100px] bg-slate-950 rounded-xl border-2 border-cyan-500 overflow-y-auto md:overflow-hidden shadow-inner flex items-center justify-center">
                                 <img src="${item.userCanvasDataUrl}" class="w-full h-full object-cover">
                             </div>
                         </div>
@@ -1071,33 +1124,71 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            // === 方案 B：直向自動縮細，盡量一版睇晒 ===
+            // === 方案 B（改良）：直向自動縮細 fit 一版，寫字區唔用 transform ===
+            window.writingSize = 380;
+
             function autoScaleGameScene() {
                 const scene = document.getElementById('gameScene');
-                if (!scene) return;
+                const heroCard = document.getElementById('heroCard');
+                const enemyCard = document.getElementById('enemyCard');
+                const canvasContainer = document.getElementById('canvasContainer');
+                const hanziTarget = document.getElementById('hanziWriterTarget');
+                const dictationCanvas = document.getElementById('dictationCanvas');
+                if (!scene || !heroCard || !enemyCard || !canvasContainer) return;
 
-                // 只在直向 + 窄螢幕先縮（手機）
                 const isPortrait = window.innerHeight > window.innerWidth;
                 const isSmall = window.innerWidth < 768;
 
-                if (isPortrait && isSmall) {
-                    // 估算內容原本高度（三個主要區塊）
-                    const estimatedHeight = 980; // 主角 + 寫字區 + 敵人 + padding
-                    const available = window.innerHeight - 20; // 留少少邊
-                    let scale = available / estimatedHeight;
-                    if (scale > 1) scale = 1;
-                    if (scale < 0.55) scale = 0.55; // 唔好縮太細
+                // 清除 transform
+                scene.style.transform = '';
+                heroCard.style.transform = '';
+                enemyCard.style.transform = '';
 
-                    scene.style.transform = `scale(${scale})`;
-                    scene.style.transformOrigin = 'top center';
-                    scene.style.height = `${estimatedHeight}px`;
-                    scene.style.marginTop = '8px';
+                if (isPortrait && isSmall) {
+                    const vh = window.innerHeight;
+                    // 預留空間俾主角卡、字頭、按鈕、敵人卡
+                    const reserved = 340;
+                    let size = Math.floor(vh - reserved);
+                    if (size > 360) size = 360;
+                    if (size < 220) size = 220;
+                    window.writingSize = size;
+
+                    // 縮細兩側卡
+                    heroCard.style.transform = 'scale(0.68)';
+                    heroCard.style.transformOrigin = 'top center';
+                    heroCard.style.marginBottom = '-40px';
+                    enemyCard.style.transform = 'scale(0.68)';
+                    enemyCard.style.transformOrigin = 'bottom center';
+                    enemyCard.style.marginTop = '-40px';
+
+                    scene.style.gap = '0px';
+                    scene.style.paddingTop = '4px';
+                    scene.style.paddingBottom = '4px';
                 } else {
-                    // 橫向或大螢幕還原
-                    scene.style.transform = '';
-                    scene.style.transformOrigin = '';
-                    scene.style.height = '';
-                    scene.style.marginTop = '';
+                    window.writingSize = 380;
+                    heroCard.style.marginBottom = '';
+                    enemyCard.style.marginTop = '';
+                    scene.style.gap = '';
+                    scene.style.paddingTop = '';
+                    scene.style.paddingBottom = '';
+                }
+
+                // 套用寫字區大小（唔用 transform）
+                const sizePx = (window.writingSize || 380) + 'px';
+                canvasContainer.style.width = sizePx;
+                canvasContainer.style.height = sizePx;
+                if (hanziTarget) {
+                    hanziTarget.style.width = sizePx;
+                    hanziTarget.style.height = sizePx;
+                }
+                if (dictationCanvas) {
+                    dictationCanvas.style.width = sizePx;
+                    dictationCanvas.style.height = sizePx;
+                }
+
+                // 如果正在寫字模式，重新初始化 canvas 尺寸
+                if (typeof initDictationCanvas === 'function' && !dictationCanvas?.classList.contains('hidden')) {
+                    initDictationCanvas();
                 }
             }
 
